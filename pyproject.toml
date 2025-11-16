@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "google-adk>=1.0.0",
+    "google-adk>=1.18.0",
 ]
 dynamic = ["version"]
 
