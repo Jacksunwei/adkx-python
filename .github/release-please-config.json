@@ -5,7 +5,12 @@
       "package-name": "adkx",
       "changelog-path": "CHANGELOG.md",
       "version-file": "src/adkx/__init__.py",
-      "extra-files": []
+      "extra-files": [],
+      "changelog-sections": [
+        {"type": "feat", "section": "Features"},
+        {"type": "fix", "section": "Bug Fixes"},
+        {"type": "chore", "section": "Chores"}
+      ]
     }
   }
 }
