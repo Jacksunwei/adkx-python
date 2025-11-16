@@ -12,16 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""ADKX - Extensions and utilities for Google ADK."""
-
-from __future__ import annotations
-
-from adkx import agents
-
-__version__ = "0.0.2"
-
-
-__all__ = [
-    "__version__",
-    "agents",
-]
+"""Tests for adkx agents module."""
