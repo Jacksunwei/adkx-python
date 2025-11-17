@@ -18,8 +18,10 @@ from __future__ import annotations
 
 from .base_tool import BaseTool
 from .base_tool import ToolResult
+from .function_tool import FunctionTool
 
 __all__ = [
     "BaseTool",
+    "FunctionTool",
     "ToolResult",
 ]
