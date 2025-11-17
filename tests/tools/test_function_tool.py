@@ -20,9 +20,9 @@ from typing import Any
 from typing import Optional
 from unittest.mock import Mock
 
-import pytest
 from google.adk.tools.tool_context import ToolContext
 from pydantic import BaseModel
+import pytest
 
 from adkx.tools import FunctionTool
 from adkx.tools import ToolResult
@@ -83,7 +83,9 @@ class TestFunctionTool:
     assert declaration.response_json_schema == {"type": "string"}
 
     # Test execution - result is auto-wrapped in ToolResult
-    result = await tool.run_async(args={"name": "Alice"}, tool_context=mock_tool_context)
+    result = await tool.run_async(
+        args={"name": "Alice"}, tool_context=mock_tool_context
+    )
     assert isinstance(result, ToolResult)
     assert result.details == ["Hello, Alice!"]
 
@@ -124,7 +126,8 @@ class TestFunctionTool:
 
     # Test execution with explicit unit
     result = await tool.run_async(
-        args={"location": "Seattle", "unit": "C"}, tool_context=mock_tool_context
+        args={"location": "Seattle", "unit": "C"},
+        tool_context=mock_tool_context,
     )
     assert result.details == ["Weather in Seattle: 72°C"]
 
@@ -156,7 +159,11 @@ class TestFunctionTool:
         "properties": {
             "a": {"title": "A", "type": "integer"},
             "b": {"title": "B", "type": "number"},
-            "operation": {"default": "add", "title": "Operation", "type": "string"},
+            "operation": {
+                "default": "add",
+                "title": "Operation",
+                "type": "string",
+            },
         },
         "required": ["a", "b"],
         "title": "Parameters",
@@ -169,11 +176,14 @@ class TestFunctionTool:
     }
 
     # Test execution
-    result = await tool.run_async(args={"a": 5, "b": 3.5}, tool_context=mock_tool_context)
+    result = await tool.run_async(
+        args={"a": 5, "b": 3.5}, tool_context=mock_tool_context
+    )
     assert result.details == [{"result": 8.5, "operation": "add"}]
 
     result = await tool.run_async(
-        args={"a": 5, "b": 3.5, "operation": "multiply"}, tool_context=mock_tool_context
+        args={"a": 5, "b": 3.5, "operation": "multiply"},
+        tool_context=mock_tool_context,
     )
     assert result.details == [{"result": 17.5, "operation": "multiply"}]
 
@@ -190,7 +200,9 @@ class TestFunctionTool:
 
     # tool_context should not be in parameters schema
     declaration = tool._get_declaration()
-    assert "tool_context" not in declaration.parameters_json_schema["properties"]
+    assert (
+        "tool_context" not in declaration.parameters_json_schema["properties"]
+    )
 
     # Test that tool_context is correctly forwarded to the function
     result = await tool.run_async(
@@ -213,7 +225,9 @@ class TestFunctionTool:
     )
 
     # Should work with sync functions too
-    result = await tool.run_async(args={"name": "Bob"}, tool_context=mock_tool_context)
+    result = await tool.run_async(
+        args={"name": "Bob"}, tool_context=mock_tool_context
+    )
     assert result.details == ["Sync hello, Bob!"]
 
   @pytest.mark.asyncio
@@ -266,7 +280,9 @@ class TestFunctionTool:
 
     # Test execution - tool_context should not be passed to function
     # Note: int return value is converted to string for ToolResult compatibility
-    result = await tool.run_async(args={"a": 5, "b": 3}, tool_context=mock_tool_context)
+    result = await tool.run_async(
+        args={"a": 5, "b": 3}, tool_context=mock_tool_context
+    )
     assert result.details == ["8"]
 
   @pytest.mark.asyncio
@@ -286,7 +302,9 @@ class TestFunctionTool:
     assert tool.description == "This is my custom tool docstring."
 
     # Test execution
-    result = await tool.run_async(args={"arg": "test"}, tool_context=mock_tool_context)
+    result = await tool.run_async(
+        args={"arg": "test"}, tool_context=mock_tool_context
+    )
     assert result.details == ["Result: test"]
 
   @pytest.mark.asyncio
@@ -341,7 +359,9 @@ class TestFunctionTool:
     assert declaration.parameters_json_schema == {
         "$defs": {
             "UserInput": {
-                "description": "User input data for testing Pydantic model parameters.",
+                "description": (
+                    "User input data for testing Pydantic model parameters."
+                ),
                 "properties": {
                     "name": {"title": "Name", "type": "string"},
                     "age": {"title": "Age", "type": "integer"},
@@ -394,7 +414,9 @@ class TestFunctionTool:
       email_part = f", {user.email}" if user.email else ""
       return f"{user.name} ({user.age}){email_part}"
 
-    tool = FunctionTool(process_optional_user, description="Process optional user")
+    tool = FunctionTool(
+        process_optional_user, description="Process optional user"
+    )
 
     # Check declaration - Optional should still produce the same schema
     declaration = tool._get_declaration()
@@ -410,7 +432,9 @@ class TestFunctionTool:
     assert result.details == ["Charlie (35), charlie@example.com"]
 
     # Test execution with None
-    result = await tool.run_async(args={"user": None}, tool_context=mock_tool_context)
+    result = await tool.run_async(
+        args={"user": None}, tool_context=mock_tool_context
+    )
     assert result.details == ["No user provided"]
 
   @pytest.mark.asyncio
@@ -461,4 +485,3 @@ class TestFunctionTool:
         "conditions": "sunny",
         "humidity": 65,
     }
-

@@ -201,8 +201,9 @@ class FunctionTool(BaseTool):
       return model.model_json_schema()
     except Exception as e:
       raise TypeError(
-          f"Failed to generate parameter schema for '{self._func.__name__}': {e}\n"
-          f"See FunctionTool docstring for supported types and limitations."
+          f"Failed to generate parameter schema for '{self._func.__name__}':"
+          f" {e}\nSee FunctionTool docstring for supported types and"
+          " limitations."
       ) from e
 
   def _build_output_schema(self) -> dict[str, Any] | None:
