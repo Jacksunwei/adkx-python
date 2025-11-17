@@ -14,6 +14,9 @@
 # limitations under the License.
 
 # Autoformat ADKX codebase.
+# Usage: ./autoformat.sh [path1 path2 ...]
+#   If no paths are provided, formats src/, tests/, and examples/
+#   Paths can be files or directories and can be repeated
 
 if ! command -v isort &> /dev/null
 then
@@ -27,28 +30,33 @@ then
     exit
 fi
 
-echo '---------------------------------------'
-echo '|  Organizing imports for src/...'
-echo '---------------------------------------'
+# If no arguments provided, use default paths
+if [ $# -eq 0 ]; then
+    paths=("src/" "tests/" "examples/")
+else
+    paths=("$@")
+fi
 
-isort src/
-echo 'All done! ✨ 🍰 ✨'
+# Process each path
+for path in "${paths[@]}"; do
+    echo "Formatting $path..."
+    echo "  → Organizing imports (isort)..."
+    isort "$path"
 
-echo '---------------------------------------'
-echo '|  Organizing imports for tests/...'
-echo '---------------------------------------'
+    echo "  → Auto-formatting code (pyink)..."
+    if [ -d "$path" ]; then
+        # If it's a directory, find all .py files
+        find -L "$path" -not -path "*/.*" -type f -name "*.py" -exec pyink --config pyproject.toml {} +
+    elif [ -f "$path" ]; then
+        # If it's a file, format it directly
+        pyink --config pyproject.toml "$path"
+    else
+        echo "  ✗ Warning: $path does not exist, skipping..."
+        continue
+    fi
 
-isort tests/
-echo 'All done! ✨ 🍰 ✨'
+    echo "  ✓ Done"
+    echo
+done
 
-echo '---------------------------------------'
-echo '|  Auto-formatting src/...'
-echo '---------------------------------------'
-
-find -L src/ -not -path "*/.*" -type f -name "*.py" -exec pyink --config pyproject.toml {} +
-
-echo '---------------------------------------'
-echo '|  Auto-formatting tests/...'
-echo '---------------------------------------'
-
-find -L tests/ -not -path "*/.*" -type f -name "*.py" -exec pyink --config pyproject.toml {} +
+echo "All done! ✨ 🍰 ✨"

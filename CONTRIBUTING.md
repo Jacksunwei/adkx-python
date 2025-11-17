@@ -25,18 +25,51 @@ uv sync --all-extras
 
 ## Code Style
 
-This project follows the same style guide as main ADK:
+This project follows the same style guide as main ADK.
 
-**Auto-format before committing:**
+### Automated Formatting with Pre-commit (Recommended)
+
+Pre-commit is included in dev dependencies. After running `uv sync --all-extras`, install the hooks:
+
 ```bash
-# Format imports
-isort src/ tests/ examples/
-
-# Format code
-pyink --config pyproject.toml src/ tests/ examples/
+pre-commit install
 ```
 
-**Style requirements:**
+This will automatically run checks before each commit:
+- **pyink**: Code formatting (Google style)
+- **isort**: Import sorting
+- **trailing-whitespace**: Remove trailing spaces
+- **end-of-file-fixer**: Ensure files end with newline
+- **check-yaml**: Validate YAML syntax
+- **check-added-large-files**: Prevent large files (>1MB)
+- **check-merge-conflict**: Detect merge conflict markers
+- **detect-private-key**: Prevent committing secrets
+
+To run manually on all files:
+```bash
+pre-commit run --all-files
+```
+
+### Manual Formatting
+
+Use the autoformat script to format code:
+
+```bash
+# Format all default directories (src/, tests/, examples/)
+./autoformat.sh
+
+# Format specific paths
+./autoformat.sh src/
+./autoformat.sh examples/weather_agent.py
+./autoformat.sh src/ tests/
+
+# Or run formatters manually
+isort src/ tests/ examples/
+pyink src/ tests/ examples/
+```
+
+### Style Requirements
+
 - Line length: 80 characters
 - Indentation: 2 spaces
 - Imports: sorted with isort (Google profile)
@@ -57,10 +90,19 @@ pytest tests/ --cov=adkx --cov-report=html
 1. **Fork the repository**
 2. **Create a feature branch** (`git checkout -b feature/amazing-idea`)
 3. **Make your changes** and add tests
-4. **Format your code** (isort + pyink)
-5. **Commit** with descriptive message
-6. **Push** to your fork
-7. **Open a Pull Request** with a clear description of your changes
+4. **Format your code** (run `./autoformat.sh` or `pre-commit run --all-files`)
+5. **Run tests** (`pytest tests/`)
+6. **Commit** with descriptive message
+7. **Push** to your fork
+8. **Open a Pull Request** with a clear description of your changes
+
+### CI Checks
+
+All pull requests must pass automated checks:
+- **Lint**: Pre-commit hooks (formatting, imports, file checks)
+- **Tests**: pytest with coverage
+
+CI runs the same pre-commit checks as your local environment, so running `pre-commit run --all-files` before pushing ensures your PR will pass.
 
 ## Commit Message Format
 
