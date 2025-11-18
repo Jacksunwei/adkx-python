@@ -86,9 +86,10 @@ class TestToolResult:
   def test_to_parts_text_only(self):
     """Test converting text-only ToolResult to Parts."""
     result = ToolResult(details=["Temperature is 72°F"])
-    parts = result.to_parts(name="get_weather")
+    parts = result.to_parts(name="get_weather", id="call-123")
 
     assert len(parts) == 1
+    assert parts[0].function_response.id == "call-123"
     assert parts[0].function_response.name == "get_weather"
     assert parts[0].function_response.response == {
         "status": "success",
@@ -98,9 +99,10 @@ class TestToolResult:
   def test_to_parts_multiple_text(self):
     """Test converting multiple text items to Parts."""
     result = ToolResult(details=["Line 1", "Line 2"])
-    parts = result.to_parts(name="test_tool")
+    parts = result.to_parts(name="test_tool", id="call-456")
 
     assert len(parts) == 1
+    assert parts[0].function_response.id == "call-456"
     assert parts[0].function_response.response == {
         "status": "success",
         "text_result": "Line 1\nLine 2",
@@ -109,9 +111,10 @@ class TestToolResult:
   def test_to_parts_with_dict(self):
     """Test converting dict content to Parts."""
     result = ToolResult(details=[{"temperature": 72, "unit": "F"}])
-    parts = result.to_parts(name="get_weather")
+    parts = result.to_parts(name="get_weather", id="call-789")
 
     assert len(parts) == 1
+    assert parts[0].function_response.id == "call-789"
     assert parts[0].function_response.response == {
         "status": "success",
         "structured_result": {"temperature": 72, "unit": "F"},
@@ -125,9 +128,10 @@ class TestToolResult:
             {"temperature": 72, "unit": "F", "condition": "sunny"},
         ]
     )
-    parts = result.to_parts(name="get_weather")
+    parts = result.to_parts(name="get_weather", id="call-abc")
 
     assert len(parts) == 1
+    assert parts[0].function_response.id == "call-abc"
     assert parts[0].function_response.response == {
         "status": "success",
         "text_result": "Temperature is 72°F",
@@ -146,9 +150,10 @@ class TestToolResult:
             Blob(data=b"fake_image_data", mime_type="image/png"),
         ]
     )
-    parts = result.to_parts(name="get_image")
+    parts = result.to_parts(name="get_image", id="call-def")
 
     assert len(parts) == 2
+    assert parts[0].function_response.id == "call-def"
     assert parts[0].function_response.response == {
         "status": "success",
         "text_result": "Here's an image:",
@@ -159,9 +164,10 @@ class TestToolResult:
   def test_to_parts_with_status(self):
     """Test converting ToolResult with error status to Parts."""
     result = ToolResult(details=["Error occurred"], status="error")
-    parts = result.to_parts(name="failing_tool")
+    parts = result.to_parts(name="failing_tool", id="call-error")
 
     assert len(parts) == 1
+    assert parts[0].function_response.id == "call-error"
     assert parts[0].function_response.response == {
         "status": "error",
         "text_result": "Error occurred",
@@ -170,7 +176,8 @@ class TestToolResult:
   def test_to_parts_empty_details(self):
     """Test converting ToolResult with no details (action-only tool)."""
     result = ToolResult()  # Empty details, default status
-    parts = result.to_parts(name="action_tool")
+    parts = result.to_parts(name="action_tool", id="call-empty")
 
     assert len(parts) == 1
+    assert parts[0].function_response.id == "call-empty"
     assert parts[0].function_response.response == {"status": "success"}

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import AsyncGenerator
+import uuid
 
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events.event import Event
@@ -112,6 +113,9 @@ class Agent(BaseAgent):
 
       if llm_response is None:
         break
+
+      # Ensure all function calls have IDs before yielding the event
+      self._ensure_function_call_ids(llm_response.content)
 
       # Yield model response event
       yield self._create_model_event(llm_response, ctx)
@@ -281,6 +285,23 @@ class Agent(BaseAgent):
 
     return function_response_parts, merged_actions
 
+  def _ensure_function_call_ids(self, content: types.Content | None) -> None:
+    """Ensure all function calls have IDs, generating adk-{uuid} if missing.
+
+    Args:
+      content: LLM response content to process.
+    """
+    if not content or not content.parts:
+      return
+
+    for part in content.parts:
+      function_call = part.function_call
+      if not function_call:
+        continue
+
+      if not function_call.id:
+        function_call.id = f"adk-{uuid.uuid4()}"
+
   def _extract_function_calls(
       self, content: types.Content | None
   ) -> list[types.FunctionCall]:
@@ -351,8 +372,18 @@ class Agent(BaseAgent):
   def _tool_result_to_parts(
       self, function_call: types.FunctionCall, tool_result: ToolResult
   ) -> list[types.Part]:
-    """Convert ToolResult to Parts for LLM response."""
-    return tool_result.to_parts(name=function_call.name or "")
+    """Convert ToolResult to Parts for LLM response.
+
+    Args:
+      function_call: The original function call from the LLM.
+      tool_result: The result from tool execution.
+
+    Returns:
+      List of Parts with FunctionResponse (with matching ID) and any media parts.
+    """
+    return tool_result.to_parts(
+        name=function_call.name or "", id=function_call.id or ""
+    )
 
   def _merge_event_actions(
       self, target: EventActions, source: EventActions

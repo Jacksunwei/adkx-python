@@ -113,7 +113,7 @@ class ToolResult(BaseModel):
   )
   adk_context: dict[str, Any] | None = None
 
-  def to_parts(self, *, name: str) -> list[Part]:
+  def to_parts(self, *, name: str, id: str) -> list[Part]:
     """Convert ToolResult to Content parts for LLM consumption.
 
     Returns a list of Parts to be added to Content.parts in the LLM request.
@@ -122,11 +122,13 @@ class ToolResult(BaseModel):
 
     Args:
       name: The function/tool name to include in the response.
+      id: The function call ID to include in the response.
 
     Returns:
       List of Parts containing FunctionResponse and standalone media.
 
     FunctionResponse structure:
+      - id: Function call ID (always present)
       - status: Execution status (always present)
       - text_result: Concatenated string content (optional)
       - structured_result: Merged dict content (optional)
@@ -135,9 +137,10 @@ class ToolResult(BaseModel):
       ```python
       # Text only
       result = ToolResult(details=["Temperature is 72°F"])
-      parts = result.to_parts(name="get_weather")
+      parts = result.to_parts(name="get_weather", id="call-123")
       # → [Part(function_response=FunctionResponse(
       #     name="get_weather",
+      #     id="call-123",
       #     response={"status": "success", "text_result": "Temperature is 72°F"}
       #   ))]
 
@@ -146,7 +149,7 @@ class ToolResult(BaseModel):
           "Here's a dog",
           Blob(data=image_bytes, mime_type="image/jpeg")
       ])
-      parts = result.to_parts(name="generate_image")
+      parts = result.to_parts(name="generate_image", id="call-456")
       # → [
       #     Part(function_response=FunctionResponse(...)),
       #     Part.from_bytes(data=image_bytes, mime_type="image/jpeg")
@@ -187,6 +190,7 @@ class ToolResult(BaseModel):
     result_parts: list[Part] = [
         Part(
             function_response=FunctionResponse(
+                id=id,
                 name=name,
                 response=dict(response_data) if response_data else {},
             )
