@@ -73,7 +73,7 @@ async def get_weather(location: str, *, tool_context) -> WeatherData:
 # 3. Create an agent with the tool
 root_agent = Agent(
     name="weather_assistant",
-    model="gemini-2.0-flash-exp",
+    model="gemini-2.5-flash",
     instruction=(
         "You are a helpful weather assistant. "
         "Use the get_weather tool to answer questions about the weather."

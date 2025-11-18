@@ -21,9 +21,9 @@ from typing import AsyncGenerator
 import uuid
 
 from google.adk.agents.invocation_context import InvocationContext
+from google.adk.agents.run_config import StreamingMode
 from google.adk.events.event import Event
 from google.adk.events.event_actions import EventActions
-from google.adk.models.google_llm import Gemini
 from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.adk.tools.tool_context import ToolContext
@@ -31,6 +31,7 @@ from google.genai import types
 from pydantic import Field
 from typing_extensions import override
 
+from ..models import Gemini
 from ..tools import BaseTool
 from ..tools import ToolResult
 from .base_agent import BaseAgent
@@ -106,10 +107,19 @@ class Agent(BaseAgent):
       # Build LLM request from session
       llm_request = self._build_llm_request(ctx)
 
-      # Call LLM with streaming (keep last response)
+      # Call LLM (with streaming if SSE mode, keep last response)
       llm_response = None
-      async for response in llm_client.generate_content_async(llm_request):
-        llm_response = response
+      async for response in llm_client.generate_content_async(
+          llm_request,
+          stream=bool(
+              ctx.run_config
+              and ctx.run_config.streaming_mode == StreamingMode.SSE
+          ),
+      ):
+        if response.partial:
+          yield self._create_model_event(response, ctx)
+        else:
+          llm_response = response
 
       if llm_response is None:
         break
