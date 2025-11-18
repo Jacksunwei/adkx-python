@@ -23,6 +23,7 @@ from google.adk.models.llm_request import LlmRequest
 from google.genai import types
 
 from adkx.agents import Agent
+from adkx.models import Gemini
 from adkx.tools import FunctionTool
 
 
@@ -67,6 +68,46 @@ def test_agent_with_tools():
   )
   assert len(agent.tools) == 1
   assert agent.tools[0].name == "get_weather"
+
+
+def test_agent_with_basellm_instance():
+  """Test that Agent can be created with a BaseLlm instance."""
+  llm = Gemini(model="gemini-2.0-flash")
+  agent = Agent(
+      name="test_agent",
+      model=llm,
+      description="A test agent with custom LLM",
+  )
+  assert agent.name == "test_agent"
+  assert agent.model == llm
+  assert isinstance(agent.model, Gemini)
+  assert agent.description == "A test agent with custom LLM"
+
+
+def test_agent_build_llm_request_with_string_model():
+  """Test that LlmRequest is built correctly with string model."""
+  agent = Agent(name="test_agent", model="gemini-2.5-flash")
+  ctx = Mock()
+  ctx.session.events = []
+
+  llm_request = agent._build_llm_request(ctx)
+
+  # Model should be passed to LlmRequest
+  assert llm_request.model == "gemini-2.5-flash"
+
+
+def test_agent_build_llm_request_with_basellm_instance():
+  """Test that LlmRequest is built correctly with BaseLlm instance."""
+  llm = Gemini(model="gemini-2.0-flash")
+  agent = Agent(name="test_agent", model=llm)
+  ctx = Mock()
+  ctx.session.events = []
+
+  llm_request = agent._build_llm_request(ctx)
+
+  # Model should be None when using BaseLlm instance
+  # (the instance itself handles the model)
+  assert llm_request.model is None
 
 
 # ============================================================================
