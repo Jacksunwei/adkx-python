@@ -233,6 +233,54 @@ You are a helpful assistant."""
 
 
 # ============================================================================
+# Function Call ID Tests
+# ============================================================================
+
+
+class TestFunctionCallIds:
+  """Tests for function call ID generation and handling."""
+
+  def test_ensure_function_call_ids(self):
+    """Test ID generation for missing IDs and preservation of existing IDs."""
+    agent = Agent(name="test_agent", model="gemini-2.5-flash")
+
+    # Create content with two function calls: one without ID, one with ID
+    existing_id = "model-provided-id-123"
+    content = types.ModelContent(
+        parts=[
+            types.Part(
+                function_call=types.FunctionCall(
+                    name="get_weather", args={"location": "SF"}
+                )
+            ),
+            types.Part(
+                function_call=types.FunctionCall(
+                    id=existing_id, name="get_time", args={}
+                )
+            ),
+        ]
+    )
+
+    agent._ensure_function_call_ids(content)
+
+    # Verify both function calls exist
+    assert content.parts[0].function_call is not None
+    assert content.parts[1].function_call is not None
+
+    # First call should get a generated ID
+    assert content.parts[0].function_call.id is not None
+    assert content.parts[0].function_call.id.startswith("adk-")
+
+    # Second call should keep its existing ID
+    assert content.parts[1].function_call.id == existing_id
+
+    # IDs should be unique
+    assert (
+        content.parts[0].function_call.id != content.parts[1].function_call.id
+    )
+
+
+# ============================================================================
 # TODO: Integration Tests
 # ============================================================================
 # TODO: Add integration tests for Agent._run_async_impl with fake BaseLlm client
