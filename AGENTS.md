@@ -66,3 +66,60 @@
 *   **Converting Exceptions to Strings:** `str(e)` can be uninformative. `repr(e)` is often better. For full details including tracebacks and chained exceptions, use functions from the `traceback` module (e.g., `traceback.format_exception(e)`, `traceback.format_exc()`).
 *   **Terminating Programs:** Use `sys.exit()` for expected terminations. Uncaught non-`SystemExit` exceptions should signal bugs. Avoid functions that cause immediate, unclean exits like `os.abort()`.
 *   **Returning None:** Be consistent. If a function can return a value, all paths should return a value (use `return None` explicitly). Bare `return` is only for early exit in conceptually void functions (annotated with `-> None`).
+
+## Debugging Tips
+
+### Working with Third-Party Libraries
+
+*   **Read Source Code in .venv:** When docs are unclear, read the actual implementation in `.venv/lib/python*/site-packages/`. Understanding `google.adk.models.base_llm.BaseLlm` was critical for implementing Gemini correctly.
+*   **Study Contracts:** Look for abstract methods, docstrings, and type hints that define expected behavior. Example: `BaseLlm.generate_content_async()` specifies streaming vs non-streaming contracts.
+*   **Compare Implementations:** Examine existing implementations for patterns. Studying `google.adk.models.google_llm.GoogleLlm` revealed metadata merging strategies.
+
+### Async and Type Checking
+
+*   **AsyncGenerator Types:** Must annotate as `AsyncGenerator[YieldType, SendType]`. Example: `async def gen() -> AsyncGenerator[int, None]:`.
+*   **Don't Await Generators:** Use `async for x in generator()`, NOT `async for x in await generator()`. Async generators return async iterators directly.
+*   **Type Ignore for SDK Gaps:** Use `# type: ignore[attr-defined]` when SDKs have incomplete stubs but runtime code is correct.
+
+### Streaming Implementation
+
+*   **Partial vs Final:** Mark streaming chunks as `partial=True`, final accumulated response as `partial=False, turn_complete=True`.
+*   **Accumulate Then Merge:** Collect all partial responses first, then create final merged response. Don't merge incrementally.
+*   **Merge Strategies by Field:**
+  - Lists (citations, parts): Concatenate all
+  - Last wins (usage, finish_reason): Use final chunk
+  - Dict merge (custom_metadata): Later overrides earlier
+*   **Group Consecutive Parts:** Use `itertools.groupby()` to group and merge consecutive text or thought parts cleanly.
+
+### Testing Async Code
+
+*   **Mock Async Generators:** Create actual async generator functions:
+  ```python
+  async def mock_gen(*args, **kwargs):
+      for item in items:
+          yield item
+  mock_client.method = mock_gen
+  ```
+*   **Helper to Collect Results:**
+  ```python
+  async def collect_all(async_gen, *args):
+      results = []
+      async for item in async_gen(*args):
+          results.append(item)
+      return results
+  ```
+*   **Use Fixtures:** Create reusable fixtures for common objects (models, requests) to reduce test duplication.
+
+### Common Pitfalls
+
+*   **Part Type Detection:** For thought parts, check `part.thought` (boolean flag); text is still in `part.text`, not a separate attribute.
+*   **Missing Type Annotations:** Always annotate function parameters and returns. Helps type checkers catch bugs.
+*   **Explicit Type Hints for Collections:** Use `results: list[Response] = []` not just `results = []` to enable type checking on list operations.
+
+### Debugging Strategies
+
+*   **Start Simple:** Implement non-streaming first, verify, then add streaming.
+*   **Test Edge Cases:** Empty inputs, single items, multiple items, mixed types.
+*   **Use repr():** Debug complex objects with `repr(obj)` or `pprint.pformat(vars(obj))`.
+*   **Compare with Reference:** When reimplementing, compare behavior with original using same inputs.
+*   **Run Both pytest and mypy:** Each catches different bug classes.
