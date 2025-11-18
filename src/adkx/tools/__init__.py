@@ -19,9 +19,11 @@ from __future__ import annotations
 from .base_tool import BaseTool
 from .base_tool import ToolResult
 from .function_tool import FunctionTool
+from .google_search_tool import google_search
 
 __all__ = [
     "BaseTool",
     "FunctionTool",
     "ToolResult",
+    "google_search",
 ]
