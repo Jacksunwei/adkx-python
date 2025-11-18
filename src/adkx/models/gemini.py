@@ -98,11 +98,12 @@ class Gemini(BaseLlm):
     """
     accumulated_responses: list[LlmResponse] = []
 
-    async for response in self.api_client.aio.models.generate_content_stream(  # type: ignore[attr-defined]
+    stream = await self.api_client.aio.models.generate_content_stream(
         model=llm_request.model or self.model,
         contents=llm_request.contents,
         config=llm_request.config,
-    ):
+    )
+    async for response in stream:
       partial_response = self._create_partial_response(response)
       accumulated_responses.append(partial_response)
       yield partial_response

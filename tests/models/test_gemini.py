@@ -96,9 +96,18 @@ async def mock_stream_generator(
 def setup_streaming_mock(
     mock_client: MagicMock, chunks: list[types.GenerateContentResponse]
 ) -> None:
-  """Setup mock client for streaming responses."""
-  mock_client.aio.models.generate_content_stream = MagicMock(
-      return_value=mock_stream_generator(chunks)
+  """Setup mock client for streaming responses.
+
+  The real API's generate_content_stream returns a coroutine that when awaited
+  gives an async generator. We use AsyncMock to match this behavior.
+  """
+
+  async def mock_coroutine(*args, **kwargs):
+    """Coroutine that returns the async generator."""
+    return mock_stream_generator(chunks)
+
+  mock_client.aio.models.generate_content_stream = AsyncMock(
+      side_effect=mock_coroutine
   )
 
 
@@ -245,12 +254,17 @@ class TestGeminiMetadataMerging:
         create_mock_response("B", finish=True),
     ]
 
-    async def mock_stream(*args, **kwargs):
+    async def mock_stream_gen(*args, **kwargs):
       for chunk in chunks:
         yield chunk
 
+    async def mock_stream_coro(*args, **kwargs):
+      return mock_stream_gen(*args, **kwargs)
+
     with patch.object(gemini, "api_client", create=True) as mock_client:
-      mock_client.aio.models.generate_content_stream = mock_stream
+      mock_client.aio.models.generate_content_stream = AsyncMock(
+          side_effect=mock_stream_coro
+      )
 
       with patch.object(LlmResponse, "create") as mock_create:
         mock_create.side_effect = [
@@ -280,12 +294,17 @@ class TestGeminiMetadataMerging:
         create_mock_response("B", finish=True),
     ]
 
-    async def mock_stream(*args, **kwargs):
+    async def mock_stream_gen(*args, **kwargs):
       for chunk in chunks:
         yield chunk
 
+    async def mock_stream_coro(*args, **kwargs):
+      return mock_stream_gen(*args, **kwargs)
+
     with patch.object(gemini, "api_client", create=True) as mock_client:
-      mock_client.aio.models.generate_content_stream = mock_stream
+      mock_client.aio.models.generate_content_stream = AsyncMock(
+          side_effect=mock_stream_coro
+      )
 
       with patch.object(LlmResponse, "create") as mock_create:
         citation1 = types.Citation(start_index=0, end_index=5, uri="http://a")
