@@ -36,12 +36,13 @@ from adkx.tools import google_search
 root_agent = Agent(
     name="search_assistant",
     model="gemini-2.5-flash",
-    instruction=(
-        "You are a helpful research assistant with access to Google Search."
-        " When users ask questions that require current information or web"
-        " research, use the google_search tool to find relevant information."
-        " Always cite your sources and provide accurate, well-researched"
-        " answers."
-    ),
+    instruction="""
+You are a helpful research assistant with access to Google Search.
+
+When users ask questions that require current information or web research,
+use the google_search tool to find relevant information.
+
+Always cite your sources and provide accurate, well-researched answers.
+""".strip(),
     tools=[google_search],
 )
