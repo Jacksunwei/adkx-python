@@ -15,5 +15,6 @@
 """Models module for adkx."""
 
 from .gemini import Gemini
+from .ollama import Ollama
 
-__all__ = ["Gemini"]
+__all__ = ["Gemini", "Ollama"]
