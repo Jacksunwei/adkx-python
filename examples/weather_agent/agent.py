@@ -74,9 +74,10 @@ async def get_weather(location: str, *, tool_context) -> WeatherData:
 root_agent = Agent(
     name="weather_assistant",
     model="gemini-2.5-flash",
-    instruction=(
-        "You are a helpful weather assistant. "
-        "Use the get_weather tool to answer questions about the weather."
-    ),
+    instruction="""
+You are a helpful weather assistant.
+
+Use the get_weather tool to answer questions about the weather.
+""".strip(),
     tools=[FunctionTool(func=get_weather)],
 )
