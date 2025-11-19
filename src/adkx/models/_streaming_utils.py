@@ -36,14 +36,14 @@ def merge_response_parts(responses: list[LlmResponse]) -> list[types.Part]:
   Returns:
     List of merged Part objects.
   """
-  all_parts = collect_all_parts(responses)
+  all_parts = _collect_all_parts(responses)
   if not all_parts:
     return []
 
-  return group_and_merge_parts(all_parts)
+  return _group_and_merge_parts(all_parts)
 
 
-def collect_all_parts(responses: list[LlmResponse]) -> list[types.Part]:
+def _collect_all_parts(responses: list[LlmResponse]) -> list[types.Part]:
   """Collect all parts from all responses.
 
   Args:
@@ -59,7 +59,7 @@ def collect_all_parts(responses: list[LlmResponse]) -> list[types.Part]:
   return all_parts
 
 
-def group_and_merge_parts(parts: list[types.Part]) -> list[types.Part]:
+def _group_and_merge_parts(parts: list[types.Part]) -> list[types.Part]:
   """Group consecutive parts by type and merge them.
 
   Consecutive text parts are merged into one text part.
@@ -85,16 +85,16 @@ def group_and_merge_parts(parts: list[types.Part]) -> list[types.Part]:
     group_parts = list(group)
 
     if part_type == "text":
-      merged.append(merge_text_parts(group_parts))
+      merged.append(_merge_text_parts(group_parts))
     elif part_type == "thought":
-      merged.append(merge_thought_parts(group_parts))
+      merged.append(_merge_thought_parts(group_parts))
     else:
       merged.extend(group_parts)
 
   return merged
 
 
-def merge_text_parts(parts: list[types.Part]) -> types.Part:
+def _merge_text_parts(parts: list[types.Part]) -> types.Part:
   """Merge consecutive text parts into one.
 
   Args:
@@ -107,7 +107,7 @@ def merge_text_parts(parts: list[types.Part]) -> types.Part:
   return types.Part(text=merged_text)
 
 
-def merge_thought_parts(parts: list[types.Part]) -> types.Part:
+def _merge_thought_parts(parts: list[types.Part]) -> types.Part:
   """Merge consecutive thought parts into one.
 
   Args:
