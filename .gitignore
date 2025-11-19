@@ -54,5 +54,7 @@ Thumbs.db
 # uv
 uv.lock
 
-# Experiments
-experiments/
+# Experiments (local scratch work only)
+# Ignore everything in experiments/ except README.md
+experiments/*
+!experiments/README.md
