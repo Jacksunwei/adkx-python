@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 from functools import cached_property
-from itertools import groupby
 import logging
 from typing import AsyncGenerator
 
@@ -27,6 +26,8 @@ from google.adk.models.llm_response import LlmResponse
 from google.genai import Client
 from google.genai import types
 from typing_extensions import override
+
+from . import _streaming_utils
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,7 @@ class Gemini(BaseLlm):
     Returns:
       LlmResponse: Complete response with all accumulated content.
     """
-    all_parts: list[types.Part] = self._merge_response_parts(
+    all_parts: list[types.Part] = _streaming_utils.merge_response_parts(
         accumulated_responses
     )
     last_response: LlmResponse = accumulated_responses[-1]
@@ -190,59 +191,6 @@ class Gemini(BaseLlm):
         if all_citations
         else None
     )
-
-  def _merge_response_parts(
-      self, responses: list[LlmResponse]
-  ) -> list[types.Part]:
-    """Merge all content parts, combining consecutive parts of same type."""
-    all_parts = self._collect_all_parts(responses)
-    if not all_parts:
-      return []
-
-    return self._group_and_merge_parts(all_parts)
-
-  def _collect_all_parts(
-      self, responses: list[LlmResponse]
-  ) -> list[types.Part]:
-    """Collect all parts from all responses."""
-    all_parts = []
-    for resp in responses:
-      if resp.content and resp.content.parts:
-        all_parts.extend(resp.content.parts)
-    return all_parts
-
-  def _group_and_merge_parts(self, parts: list[types.Part]) -> list[types.Part]:
-    """Group consecutive parts by type and merge them."""
-
-    def get_part_type(part: types.Part) -> str:
-      if part.thought:
-        return "thought"
-      if part.text:
-        return "text"
-      return "other"
-
-    merged = []
-    for part_type, group in groupby(parts, key=get_part_type):
-      group_parts = list(group)
-
-      if part_type == "text":
-        merged.append(self._merge_text_parts(group_parts))
-      elif part_type == "thought":
-        merged.append(self._merge_thought_parts(group_parts))
-      else:
-        merged.extend(group_parts)
-
-    return merged
-
-  def _merge_text_parts(self, parts: list[types.Part]) -> types.Part:
-    """Merge consecutive text parts into one."""
-    merged_text = "".join(p.text for p in parts if p.text)
-    return types.Part(text=merged_text)
-
-  def _merge_thought_parts(self, parts: list[types.Part]) -> types.Part:
-    """Merge consecutive thought parts into one."""
-    merged_text = "".join(p.text for p in parts if p.text)
-    return types.Part(thought=True, text=merged_text)
 
   @cached_property
   def api_client(self) -> Client:
