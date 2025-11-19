@@ -33,6 +33,8 @@ from openai.types.chat import ChatCompletion
 from openai.types.chat import ChatCompletionChunk
 from openai.types.chat import ChatCompletionMessageParam
 from openai.types.chat.chat_completion_assistant_message_param import ChatCompletionAssistantMessageParam
+from openai.types.chat.chat_completion_chunk import ChoiceDelta
+from openai.types.chat.chat_completion_message import ChatCompletionMessage
 from openai.types.chat.chat_completion_message_function_tool_call_param import ChatCompletionMessageFunctionToolCallParam
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 from openai.types.chat.chat_completion_tool_message_param import ChatCompletionToolMessageParam
@@ -43,6 +45,15 @@ from typing_extensions import override
 from . import _streaming_utils
 
 logger = logging.getLogger(__name__)
+
+# Mapping from OpenAI finish reasons to ADK FinishReason types
+_FINISH_REASON_MAP: dict[str, types.FinishReason] = {
+    "stop": types.FinishReason.STOP,
+    "length": types.FinishReason.MAX_TOKENS,
+    "tool_calls": types.FinishReason.STOP,
+    "content_filter": types.FinishReason.OTHER,
+    "function_call": types.FinishReason.STOP,
+}
 
 
 class Ollama(BaseLlm):
@@ -167,6 +178,8 @@ class Ollama(BaseLlm):
       final_response = self._create_complete_response(accumulated_responses)
       yield final_response
 
+  # Request conversion methods (ADK -> OpenAI format)
+
   def _convert_contents_to_messages(
       self, contents: list[types.Content]
   ) -> list[ChatCompletionMessageParam]:
@@ -263,18 +276,8 @@ class Ollama(BaseLlm):
     ]
 
     # Collect function calls and convert to tool calls
-    tool_calls: list[ChatCompletionMessageFunctionToolCallParam] = [
-        cast(
-            ChatCompletionMessageFunctionToolCallParam,
-            {
-                "id": part.function_call.id or "call_unknown",
-                "type": "function",
-                "function": {
-                    "name": part.function_call.name,
-                    "arguments": json.dumps(part.function_call.args or {}),
-                },
-            },
-        )
+    tool_calls = [
+        self._convert_function_call_to_tool_call(part.function_call)
         for part in content.parts
         if part.function_call
     ]
@@ -295,6 +298,29 @@ class Ollama(BaseLlm):
       assistant_message["tool_calls"] = tool_calls
 
     return assistant_message
+
+  def _convert_function_call_to_tool_call(
+      self, function_call: types.FunctionCall
+  ) -> ChatCompletionMessageFunctionToolCallParam:
+    """Convert ADK FunctionCall to OpenAI tool call format.
+
+    Args:
+      function_call: The ADK FunctionCall to convert.
+
+    Returns:
+      OpenAI-format tool call dict.
+    """
+    return cast(
+        ChatCompletionMessageFunctionToolCallParam,
+        {
+            "id": function_call.id or "call_unknown",
+            "type": "function",
+            "function": {
+                "name": function_call.name,
+                "arguments": json.dumps(function_call.args or {}),
+            },
+        },
+    )
 
   def _convert_tools(
       self, llm_request: LlmRequest
@@ -331,24 +357,19 @@ class Ollama(BaseLlm):
 
     return openai_tools if openai_tools else None
 
-  def _convert_streaming_chunk(self, chunk: ChatCompletionChunk) -> LlmResponse:
-    """Convert streaming chunk to LlmResponse.
+  # Response conversion methods (OpenAI -> ADK format)
+
+  def _extract_parts_from_delta(self, delta: ChoiceDelta) -> list[types.Part]:
+    """Extract ADK Parts from OpenAI streaming delta.
+
+    Handles reasoning (thought), text content, and tool calls.
 
     Args:
-      chunk: OpenAI ChatCompletionChunk.
+      delta: OpenAI ChoiceDelta from streaming chunk.
 
     Returns:
-      Partial LlmResponse object.
+      List of ADK Part objects.
     """
-
-    if not chunk.choices:
-      return LlmResponse(
-          error_code="NO_CHOICES",
-          error_message="No choices returned from model",
-      )
-
-    choice = chunk.choices[0]
-    delta = choice.delta
     parts: list[types.Part] = []
 
     # Handle DeepSeek R1 reasoning (non-standard field)
@@ -379,18 +400,31 @@ class Ollama(BaseLlm):
             )
         )
 
+    return parts
+
+  def _convert_streaming_chunk(self, chunk: ChatCompletionChunk) -> LlmResponse:
+    """Convert streaming chunk to LlmResponse.
+
+    Args:
+      chunk: OpenAI ChatCompletionChunk.
+
+    Returns:
+      Partial LlmResponse object.
+    """
+
+    if not chunk.choices:
+      return LlmResponse(
+          error_code="NO_CHOICES",
+          error_message="No choices returned from model",
+      )
+
+    choice = chunk.choices[0]
+    parts = self._extract_parts_from_delta(choice.delta)
     content = types.ModelContent(parts=parts) if parts else None
 
     finish_reason = None
     if choice.finish_reason:
-      finish_reason_map = {
-          "stop": types.FinishReason.STOP,
-          "length": types.FinishReason.MAX_TOKENS,
-          "tool_calls": types.FinishReason.STOP,
-          "content_filter": types.FinishReason.OTHER,
-          "function_call": types.FinishReason.STOP,
-      }
-      finish_reason = finish_reason_map.get(
+      finish_reason = _FINISH_REASON_MAP.get(
           choice.finish_reason, types.FinishReason.OTHER
       )
 
@@ -403,24 +437,19 @@ class Ollama(BaseLlm):
         usage_metadata=None,
     )
 
-  def _convert_completion(self, completion: ChatCompletion) -> LlmResponse:
-    """Convert non-streaming completion to LlmResponse.
+  def _extract_parts_from_message(
+      self, message: ChatCompletionMessage
+  ) -> list[types.Part]:
+    """Extract ADK Parts from OpenAI completion message.
+
+    Handles reasoning (thought), text content, and tool calls.
 
     Args:
-      completion: OpenAI ChatCompletion.
+      message: OpenAI ChatCompletionMessage from non-streaming completion.
 
     Returns:
-      Complete LlmResponse object.
+      List of ADK Part objects.
     """
-
-    if not completion.choices:
-      return LlmResponse(
-          error_code="NO_CHOICES",
-          error_message="No choices returned from model",
-      )
-
-    choice = completion.choices[0]
-    message = choice.message
     parts: list[types.Part] = []
 
     # Handle DeepSeek R1 reasoning (non-standard field)
@@ -450,18 +479,31 @@ class Ollama(BaseLlm):
             )
         )
 
+    return parts
+
+  def _convert_completion(self, completion: ChatCompletion) -> LlmResponse:
+    """Convert non-streaming completion to LlmResponse.
+
+    Args:
+      completion: OpenAI ChatCompletion.
+
+    Returns:
+      Complete LlmResponse object.
+    """
+
+    if not completion.choices:
+      return LlmResponse(
+          error_code="NO_CHOICES",
+          error_message="No choices returned from model",
+      )
+
+    choice = completion.choices[0]
+    parts = self._extract_parts_from_message(choice.message)
     content = types.ModelContent(parts=parts) if parts else None
 
     finish_reason = None
     if choice.finish_reason:
-      finish_reason_map = {
-          "stop": types.FinishReason.STOP,
-          "length": types.FinishReason.MAX_TOKENS,
-          "tool_calls": types.FinishReason.STOP,
-          "content_filter": types.FinishReason.OTHER,
-          "function_call": types.FinishReason.STOP,
-      }
-      finish_reason = finish_reason_map.get(
+      finish_reason = _FINISH_REASON_MAP.get(
           choice.finish_reason, types.FinishReason.OTHER
       )
 
@@ -526,6 +568,8 @@ class Ollama(BaseLlm):
         usage_metadata=last_response.usage_metadata,
     )
 
+  # Utility methods
+
   def _get_gcp_auth_token(self) -> str:
     """Get GCP authentication token for Cloud Run.
 
@@ -559,6 +603,8 @@ class Ollama(BaseLlm):
       raise RuntimeError(
           "gcloud command not found. Please install Google Cloud SDK."
       ) from e
+
+  # Properties
 
   @cached_property
   def client(self) -> AsyncOpenAI:
