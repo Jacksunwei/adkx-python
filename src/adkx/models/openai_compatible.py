@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Ollama LLM implementation using OpenAI-compatible API."""
+"""Abstract base class for OpenAI-compatible LLM providers."""
 
 from __future__ import annotations
 
+from abc import ABC
+from abc import abstractmethod
 from functools import cached_property
 import json
 import logging
-import subprocess
 from typing import AsyncGenerator
 from typing import cast
 from typing import Optional
@@ -56,11 +57,11 @@ _FINISH_REASON_MAP: dict[str, types.FinishReason] = {
 }
 
 
-class Ollama(BaseLlm):
-  """Ollama LLM implementation using OpenAI-compatible API.
+class OpenAICompatibleLlm(BaseLlm, ABC):
+  """Abstract base class for OpenAI-compatible LLM providers.
 
-  Connects to Ollama instances (local or Cloud Run) using the OpenAI-compatible
-  endpoint at /v1/chat/completions.
+  Implements the OpenAI Chat Completions API protocol. Subclasses must implement
+  _create_client() to provide provider-specific configuration.
 
   Note on thought/reasoning content:
     - When receiving responses: thought text (from reasoning field) is captured as
@@ -68,23 +69,13 @@ class Ollama(BaseLlm):
     - When sending requests: thought parts are EXCLUDED from conversation history
       as the OpenAI Chat Completions API does not have a standard field for
       reasoning content in request messages
-
-  Attributes:
-    model: The name of the Ollama model (e.g., "deepseek-r1:8b").
-    base_url: The base URL of the Ollama instance (e.g., "http://localhost:11434/v1").
-    api_key: API key (not used by Ollama, defaults to "unused").
   """
-
-  model: str = "qwen3-coder:30b"
-  base_url: str = "http://localhost:11434/v1"
-  api_key: str = "unused"
-  use_gcp_auth: bool = False
 
   @override
   async def generate_content_async(
       self, llm_request: LlmRequest, stream: bool = False
   ) -> AsyncGenerator[LlmResponse, None]:
-    """Generates content from the Ollama model.
+    """Generates content from the OpenAI-compatible model.
 
     This method strictly follows the BaseLlm contract:
     - For non-streaming: yields exactly one LlmResponse
@@ -101,7 +92,7 @@ class Ollama(BaseLlm):
     self._maybe_append_user_content(llm_request)
 
     logger.info(
-        "Sending request to Ollama model: %s, stream: %s",
+        "Sending request to model: %s, stream: %s",
         llm_request.model or self.model,
         stream,
     )
@@ -128,7 +119,7 @@ class Ollama(BaseLlm):
           max_tokens=max_tokens,
           stream=False,
       )
-      logger.info("Response received from Ollama model")
+      logger.info("Response received from model")
       yield self._convert_completion(response)
 
   async def _generate_content_streaming(
@@ -568,42 +559,6 @@ class Ollama(BaseLlm):
         usage_metadata=last_response.usage_metadata,
     )
 
-  # Utility methods
-
-  def _get_gcp_auth_token(self) -> str:
-    """Get GCP authentication token for Cloud Run.
-
-    Returns:
-      str: The authentication token.
-
-    Raises:
-      RuntimeError: If unable to fetch authentication token.
-    """
-    # TODO: This method is for local development with user credentials (gcloud auth login).
-    # For production deployments, use service account keys or GCP metadata server instead.
-    # Note: Cannot use google-auth library to generate ID tokens with user credentials.
-    # For Cloud Run, we need an ID token not an access token
-    # Use gcloud to get the ID token (works with user credentials)
-    try:
-      result = subprocess.run(
-          ["gcloud", "auth", "print-identity-token"],
-          capture_output=True,
-          text=True,
-          check=True,
-      )
-      token = result.stdout.strip()
-      if not token:
-        raise RuntimeError("Empty token returned from gcloud")
-      return token
-    except subprocess.CalledProcessError as e:
-      raise RuntimeError(
-          f"Failed to fetch GCP authentication token: {e.stderr}"
-      ) from e
-    except FileNotFoundError as e:
-      raise RuntimeError(
-          "gcloud command not found. Please install Google Cloud SDK."
-      ) from e
-
   # Properties
 
   @cached_property
@@ -611,18 +566,18 @@ class Ollama(BaseLlm):
     """Creates and returns the AsyncOpenAI client.
 
     Returns:
-      AsyncOpenAI: The configured OpenAI client pointing to Ollama.
+      AsyncOpenAI: The configured OpenAI client.
     """
-    api_key = self.api_key
-    default_headers = None
+    return self._create_client()
 
-    if self.use_gcp_auth:
-      api_key = self._get_gcp_auth_token()
-      # For Cloud Run, we need to explicitly set the Authorization header
-      default_headers = {"Authorization": f"Bearer {api_key}"}
+  @abstractmethod
+  def _create_client(self) -> AsyncOpenAI:
+    """Create and configure the AsyncOpenAI client.
 
-    return AsyncOpenAI(
-        base_url=self.base_url,
-        api_key=api_key,
-        default_headers=default_headers,
-    )
+    Subclasses must implement this to provide provider-specific configuration
+    such as base_url, api_key, headers, etc.
+
+    Returns:
+      AsyncOpenAI: The configured client instance.
+    """
+    ...
