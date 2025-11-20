@@ -34,9 +34,11 @@ Tested 3 approaches for returning images from function calls with normal Gemini 
 
 ```python
 types.FunctionResponse(
-    name='generate_image',
-    response={'description': 'Generated image of a dog'},
-    parts=[types.FunctionResponsePart.from_bytes(data=image_data, mime_type='image/jpeg')]
+    name="generate_image",
+    response={"description": "Generated image of a dog"},
+    parts=[
+        types.FunctionResponsePart.from_bytes(data=image_data, mime_type="image/jpeg")
+    ],
 )
 ```
 
@@ -46,8 +48,12 @@ types.FunctionResponse(
 
 ```python
 types.FunctionResponse(
-    name='generate_image',
-    response={'description': '...', 'image': base64_encoded_image, 'mime_type': 'image/jpeg'}
+    name="generate_image",
+    response={
+        "description": "...",
+        "image": base64_encoded_image,
+        "mime_type": "image/jpeg",
+    },
 )
 ```
 
@@ -63,12 +69,12 @@ types.FunctionResponse(
 
 ```python
 types.Content(
-    role='function',
+    role="function",
     parts=[
         types.Part(function_response=types.FunctionResponse(...)),
-        types.Part.from_bytes(data=image_data, mime_type='image/jpeg')
+        types.Part.from_bytes(data=image_data, mime_type="image/jpeg"),
         # Note: Omit display_name for cross-backend compatibility
-    ]
+    ],
 )
 ```
 
@@ -90,16 +96,18 @@ Current `ToolResult.to_function_response()` puts Blob/FileData in `FunctionRespo
 
 ```python
 def to_content_parts(self, *, function_name: str) -> list[Part]:
-  """Convert ToolResult to Content parts for LLM consumption."""
-  parts = [Part(function_response=self.to_function_response(name=function_name))]
+    """Convert ToolResult to Content parts for LLM consumption."""
+    parts = [Part(function_response=self.to_function_response(name=function_name))]
 
-  for item in self.content:
-    if isinstance(item, Blob):
-      parts.append(Part.from_bytes(data=item.data, mime_type=item.mime_type))
-    elif isinstance(item, FileData):
-      parts.append(Part.from_uri(file_uri=item.file_uri, mime_type=item.mime_type))
+    for item in self.content:
+        if isinstance(item, Blob):
+            parts.append(Part.from_bytes(data=item.data, mime_type=item.mime_type))
+        elif isinstance(item, FileData):
+            parts.append(
+                Part.from_uri(file_uri=item.file_uri, mime_type=item.mime_type)
+            )
 
-  return parts
+    return parts
 ```
 
 **Options:**

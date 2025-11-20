@@ -101,6 +101,8 @@
 async def mock_gen(*args, **kwargs):
     for item in items:
         yield item
+
+
 mock_client.method = mock_gen
 ```
 

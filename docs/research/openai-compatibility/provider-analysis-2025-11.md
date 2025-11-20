@@ -214,7 +214,7 @@ router = OpenAICompatible(
 llm.generate(routing_strategy="cheapest")  # Use Together AI
 
 # 3. Latency-based routing
-llm.generate(routing_strategy="fastest")   # Use Groq
+llm.generate(routing_strategy="fastest")  # Use Groq
 ```
 
 **Gap**: No provider abstraction or routing layer.

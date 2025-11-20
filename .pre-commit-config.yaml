@@ -23,9 +23,12 @@ repos:
     hooks:
       - id: mdformat
         additional_dependencies:
-          - mdformat-gfm  # GitHub Flavored Markdown
-          - mdformat-tables  # Table support
-          - mdformat-frontmatter  # YAML frontmatter support
+          - mdformat-gfm # GitHub Flavored Markdown
+          - mdformat-tables # Table support
+          - mdformat-frontmatter # YAML frontmatter support
+          - mdformat-black # Format Python code blocks
+          - mdformat-footnote # Footnotes support
+          - mdformat-admon # Admonitions/callouts
 
   # General file checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
