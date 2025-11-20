@@ -5,12 +5,14 @@ Formal proposals for significant features or architectural changes.
 ## Current RFCs
 
 ### Active
+
 - **[Multi-Modal Function Response](multi-modal-function-response.md)** - Design for returning images from function calls
 
 ### Implemented
+
 *(None yet)*
 
----
+______________________________________________________________________
 
 ## Adding New RFCs
 

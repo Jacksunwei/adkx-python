@@ -15,11 +15,13 @@ docs/
 ## Quick Navigation
 
 ### 📊 Research
+
 Exploratory research, comparisons, and technical investigations. These documents inform future design decisions.
 
 **Browse by topic**: See [research/README.md](research/README.md) for full index
 
 ### 📝 Design Proposals (RFCs)
+
 Formal proposals for significant features or changes.
 
 **Browse all**: See [design/README.md](design/README.md)
@@ -27,6 +29,7 @@ Formal proposals for significant features or changes.
 **Format**: Problem → Motivation → Proposal → Alternatives
 
 ### ✅ Architecture Decisions (ADRs)
+
 Immutable records of finalized architectural decisions. Numbered sequentially, never edited after merging.
 
 **Browse all**: See [decisions/README.md](decisions/README.md)
@@ -52,27 +55,33 @@ Immutable records of finalized architectural decisions. Numbered sequentially, n
 ## Document Types
 
 ### Research Documents
+
 **Purpose**: Investigate topics, compare options, document findings
 
 **Characteristics**:
+
 - Can be incomplete or evolving
 - May contain "dead ends" (what doesn't work)
 - Dated but not frozen
 - Informal, exploratory tone
 
 ### RFCs (Request for Comments)
+
 **Purpose**: Propose concrete changes with clear problem statements
 
 **Characteristics**:
+
 - Structured format
 - Requires review/approval
 - Snapshot in time (doesn't update after approval)
 - Links to ADR after decision
 
 ### ADRs (Architecture Decision Records)
+
 **Purpose**: Record finalized decisions and their context
 
 **Characteristics**:
+
 - Immutable (never edit, create new ADR to reverse)
 - Numbered sequentially (ADR-0001, ADR-0002, etc.)
 - Short and focused (1-2 pages max)
@@ -81,6 +90,7 @@ Immutable records of finalized architectural decisions. Numbered sequentially, n
 ## Contributing
 
 ### Adding Research
+
 ```bash
 # Choose appropriate topic folder or create new one
 docs/research/[topic-name]/your-analysis.md
@@ -90,6 +100,7 @@ docs/research/README.md
 ```
 
 ### Proposing a Design
+
 ```bash
 # Create RFC with date suffix (month precision)
 docs/design/feature-name-YYYY-MM.md
@@ -98,6 +109,7 @@ docs/design/feature-name-YYYY-MM.md
 ```
 
 ### Recording a Decision
+
 ```bash
 # Create ADR with next sequential number
 docs/decisions/NNNN-decision-name.md

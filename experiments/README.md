@@ -5,6 +5,7 @@
 ⚠️ **Not committed to git** - Local to your machine only
 
 ## Use For
+
 - Quick prototypes and debugging
 - Testing ideas before formalization
 - Personal scratch work

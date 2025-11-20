@@ -36,6 +36,7 @@ pre-commit install
 ```
 
 This will automatically run checks before each commit:
+
 - **pyink**: Code formatting (Google style)
 - **isort**: Import sorting
 - **trailing-whitespace**: Remove trailing spaces
@@ -46,6 +47,7 @@ This will automatically run checks before each commit:
 - **detect-private-key**: Prevent committing secrets
 
 To run manually on all files:
+
 ```bash
 pre-commit run --all-files
 ```
@@ -88,17 +90,18 @@ pytest tests/ --cov=adkx --cov-report=html
 ## Submitting Changes
 
 1. **Fork the repository**
-2. **Create a feature branch** (`git checkout -b feature/amazing-idea`)
-3. **Make your changes** and add tests
-4. **Format your code** (run `./autoformat.sh` or `pre-commit run --all-files`)
-5. **Run tests** (`pytest tests/`)
-6. **Commit** with descriptive message
-7. **Push** to your fork
-8. **Open a Pull Request** with a clear description of your changes
+1. **Create a feature branch** (`git checkout -b feature/amazing-idea`)
+1. **Make your changes** and add tests
+1. **Format your code** (run `./autoformat.sh` or `pre-commit run --all-files`)
+1. **Run tests** (`pytest tests/`)
+1. **Commit** with descriptive message
+1. **Push** to your fork
+1. **Open a Pull Request** with a clear description of your changes
 
 ### CI Checks
 
 All pull requests must pass automated checks:
+
 - **Lint**: Pre-commit hooks (formatting, imports, file checks)
 - **Tests**: pytest with coverage
 

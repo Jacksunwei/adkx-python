@@ -1,10 +1,6 @@
----
-type: Technical Analysis
-date: 2025-11-16
-status: Implemented
-category: Tools
-tags: [multi-modal, gemini, function-response, visual-understanding]
----
+______________________________________________________________________
+
+## type: Technical Analysis date: 2025-11-16 status: Implemented category: Tools tags: [multi-modal, gemini, function-response, visual-understanding]
 
 # FunctionResponse Multi-modal Content Test Results
 
@@ -13,21 +9,22 @@ tags: [multi-modal, gemini, function-response, visual-understanding]
 Tested 3 approaches for returning images from function calls with normal Gemini models (gemini-2.5-flash).
 
 **Key Findings:**
+
 1. **Standalone Parts (Test 3)** ⭐ — Works on both backends with visual understanding
-2. **FunctionResponse.parts** — Only for Computer Use models, NOT normal Gemini
-3. **Backend differences exist:**
+1. **FunctionResponse.parts** — Only for Computer Use models, NOT normal Gemini
+1. **Backend differences exist:**
    - Google AI API: Understands base64 in response dicts; rejects `display_name`
    - Vertex AI: Cannot see base64 images; supports `display_name` parameter
 
 ## Test Results
 
-| Test                          | Approach               | Google AI API | Vertex AI     | Recommendation    |
-| ----------------------------- | ---------------------- | ------------- | ------------- | ----------------- |
+| Test                          | Approach               | Google AI API  | Vertex AI      | Recommendation    |
+| ----------------------------- | ---------------------- | -------------- | -------------- | ----------------- |
 | **1. FunctionResponse.parts** | Image in `parts` field | ❌ 400 error   | ❌ 400 error   | Computer Use only |
 | **2. Base64 in response**     | Encoded image in dict  | ✅ Full visual | ⚠️ No visual   | Backend-specific  |
-| **3. Standalone Part**        | Image as separate Part | ✅ Works*      | ✅ Full visual | **RECOMMENDED**   |
+| **3. Standalone Part**        | Image as separate Part | ✅ Works\*     | ✅ Full visual | **RECOMMENDED**   |
 
-*Google AI API requires omitting `display_name` parameter
+\*Google AI API requires omitting `display_name` parameter
 
 ### Test 1: FunctionResponse.parts (FAILED)
 
@@ -51,9 +48,11 @@ types.FunctionResponse(
 ```
 
 - **Google AI API:** ✅ Full visual understanding
+
   > "The dog in the image appears to be a **Golden Retriever**. Here's why: Golden Coat, Friendly Expression, Build and Features..."
 
 - **Vertex AI:** ⚠️ No visual analysis, appears to guess from text
+
   > "This dog appears to be a **Goldendoodle**. Its medium size, shaggy/fluffy light brown coat..." (incorrect - actual image is black/white Border Collie)
 
 ### Test 3: Standalone Part (RECOMMENDED) ⭐
@@ -70,9 +69,11 @@ types.Content(
 ```
 
 - **Google AI API:** ✅ Correct breed identification
+
   > "I'm going to guess this adorable puppy is a **Border Collie**. The black and white coloring with the distinctive white blaze on the face and a fluffy, medium-length coat are all strong indicators..."
 
 - **Vertex AI:** ✅ Detailed visual analysis with reasoning
+
   > "Based on the image, the dog appears to be a **Border Collie** (likely a puppy). Key characteristics: Black and white coat, distinct white blaze on face, medium-length fluffy fur, intelligent expression..."
 
 **Critical:** Google AI API rejects `display_name` parameter with ValueError
@@ -98,9 +99,10 @@ def to_content_parts(self, *, function_name: str) -> list[Part]:
 ```
 
 **Options:**
-1. Return `tuple[FunctionResponse, list[Part]]` from existing method
-2. Add new `to_content_parts()` method (recommended for backward compatibility)
 
----
+1. Return `tuple[FunctionResponse, list[Part]]` from existing method
+1. Add new `to_content_parts()` method (recommended for backward compatibility)
+
+______________________________________________________________________
 
 **Environment:** gemini-2.5-flash, Google AI API & Vertex AI, Border Collie JPEG 500x342 ~57KB, 2025-11-16

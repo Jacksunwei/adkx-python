@@ -11,18 +11,22 @@ See [TEMPLATE.md](TEMPLATE.md) for format.
 ## Current ADRs
 
 ### Proposed
+
 *(None - first will be ADR-0001)*
 
 ### Accepted
+
 *(None)*
 
 ### Deprecated
+
 *(None)*
 
 ### Superseded
+
 *(None)*
 
----
+______________________________________________________________________
 
 ## Creating a New ADR
 
@@ -37,16 +41,19 @@ See [TEMPLATE.md](TEMPLATE.md) for format.
 ## When to Create ADRs
 
 **Create for:**
+
 - Architectural decisions, technology selections
 - Significant design patterns, hard-to-reverse decisions
 
 **Skip for:**
+
 - Trivial details, easily reversible decisions
 - Experiments (use `experiments/`)
 
 ## Status Updates
 
 ADRs are immutable once accepted. Only update status line:
+
 - **Proposed** → **Accepted** → **Deprecated** → **Superseded**
 
 See [docs/README.md](../README.md) for document lifecycle.

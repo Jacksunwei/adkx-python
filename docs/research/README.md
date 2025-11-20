@@ -5,21 +5,26 @@ Technical research and analysis that inform ADKX design decisions.
 ## Active Research
 
 ### OpenAI Compatibility
+
 - **[Provider Analysis (2025-11)](openai-compatibility/provider-analysis-2025-11.md)** - Multi-provider LLM support, technical gaps, recommendations
 
 ### Agent Frameworks
+
 *(Empty - placeholder)*
 
 ### LLM Models
+
 *(Empty - placeholder)*
 
 ### Deployment
+
 *(Empty - placeholder)*
 
 ## Archive
+
 *(Empty)*
 
----
+______________________________________________________________________
 
 ## Adding New Research
 
