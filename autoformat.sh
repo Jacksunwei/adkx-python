@@ -13,50 +13,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Autoformat ADKX codebase.
+# Autoformat ADKX codebase using pre-commit hooks.
 # Usage: ./autoformat.sh [path1 path2 ...]
-#   If no paths are provided, formats src/, tests/, and examples/
-#   Paths can be files or directories and can be repeated
+#   If no paths are provided, formats all files
+#   Otherwise formats specified paths (files or directories)
 
-if ! command -v isort &> /dev/null
-then
-    echo "isort not found, please install dev dependencies first: uv pip install -e '.[dev]'"
-    exit
-fi
+set -e  # Exit on error
 
-if ! command -v pyink &> /dev/null
-then
-    echo "pyink not found, please install dev dependencies first: uv pip install -e '.[dev]'"
-    exit
-fi
-
-# If no arguments provided, use default paths
+# If no arguments provided, run on all files
 if [ $# -eq 0 ]; then
-    paths=("src/" "tests/" "examples/")
+    echo "Formatting all files..."
+    uv run pre-commit run --all-files
 else
-    paths=("$@")
+    # Collect all Python files from specified paths
+    files=()
+    for path in "$@"; do
+        if [ -d "$path" ]; then
+            # If it's a directory, find all .py files
+            while IFS= read -r -d '' file; do
+                files+=("$file")
+            done < <(find -L "$path" -not -path "*/.*" -type f -name "*.py" -print0)
+        elif [ -f "$path" ]; then
+            # If it's a file, add it directly
+            files+=("$path")
+        else
+            echo "Warning: $path does not exist, skipping..."
+        fi
+    done
+
+    # Run pre-commit on collected files
+    if [ ${#files[@]} -gt 0 ]; then
+        echo "Formatting ${#files[@]} file(s)..."
+        uv run pre-commit run --files "${files[@]}"
+    else
+        echo "No files found to format."
+        exit 1
+    fi
 fi
 
-# Process each path
-for path in "${paths[@]}"; do
-    echo "Formatting $path..."
-    echo "  → Organizing imports (isort)..."
-    isort "$path"
-
-    echo "  → Auto-formatting code (pyink)..."
-    if [ -d "$path" ]; then
-        # If it's a directory, find all .py files
-        find -L "$path" -not -path "*/.*" -type f -name "*.py" -exec pyink --config pyproject.toml {} +
-    elif [ -f "$path" ]; then
-        # If it's a file, format it directly
-        pyink --config pyproject.toml "$path"
-    else
-        echo "  ✗ Warning: $path does not exist, skipping..."
-        continue
-    fi
-
-    echo "  ✓ Done"
-    echo
-done
-
+echo
 echo "All done! ✨ 🍰 ✨"
