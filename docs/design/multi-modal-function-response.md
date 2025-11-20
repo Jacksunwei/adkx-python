@@ -1,6 +1,17 @@
 ______________________________________________________________________
 
-## type: Technical Analysis date: 2025-11-16 status: Implemented category: Tools tags: [multi-modal, gemini, function-response, visual-understanding]
+type: Technical Analysis
+date: 2025-11-16
+status: Implemented
+category: Tools
+tags:
+
+- multi-modal
+- gemini
+- function-response
+- visual-understanding
+
+______________________________________________________________________
 
 # FunctionResponse Multi-modal Content Test Results
 
@@ -103,6 +114,9 @@ def to_content_parts(self, *, function_name: str) -> list[Part]:
 1. Return `tuple[FunctionResponse, list[Part]]` from existing method
 1. Add new `to_content_parts()` method (recommended for backward compatibility)
 
-______________________________________________________________________
+## Environment
 
-**Environment:** gemini-2.5-flash, Google AI API & Vertex AI, Border Collie JPEG 500x342 ~57KB, 2025-11-16
+- **Model:** gemini-2.5-flash
+- **Backends:** Google AI API & Vertex AI
+- **Test Image:** Border Collie JPEG (500x342, ~57KB)
+- **Date:** 2025-11-16
