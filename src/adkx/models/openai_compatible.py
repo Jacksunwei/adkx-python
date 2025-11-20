@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 
-from abc import ABC
 from abc import abstractmethod
 from functools import cached_property
 import json
@@ -57,7 +56,7 @@ _FINISH_REASON_MAP: dict[str, types.FinishReason] = {
 }
 
 
-class OpenAICompatibleLlm(BaseLlm, ABC):
+class OpenAICompatibleLlm(BaseLlm):
   """Abstract base class for OpenAI-compatible LLM providers.
 
   Implements the OpenAI Chat Completions API protocol. Subclasses must implement
