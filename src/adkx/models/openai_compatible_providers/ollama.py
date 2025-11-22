@@ -16,9 +16,61 @@
 
 from __future__ import annotations
 
-from openai import AsyncOpenAI
+from typing import ClassVar
 
+from openai import AsyncOpenAI
+from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
+from pydantic import Field
+from typing_extensions import override
+
+from ..openai_compatible import _ToolCallBuffer
+from ..openai_compatible import AssistantTurnAccumulator
 from ..openai_compatible import OpenAICompatibleLlm
+
+
+class OllamaAssistantTurnAccumulator(AssistantTurnAccumulator):
+  """Ollama-specific accumulator handling ID-based tool call tracking.
+
+  Ollama Streaming Pattern:
+  - Uses same index (often 0) for all tool calls
+  - Each tool call has unique non-null ID
+  - Arguments complete in single chunk (no incremental streaming)
+
+  Solution: Assign synthetic sequential indices as new IDs arrive,
+  reusing parent's _tool_call_buffers_by_index dict.
+  """
+
+  def __init__(self):
+    """Initialize with ID tracking for synthetic index generation."""
+    super().__init__()
+    self._current_id: str | None = None
+    self._next_synthetic_index: int = 0
+
+  @override
+  def _process_tool_calls(self, tool_calls: list[ChoiceDeltaToolCall]) -> None:
+    """Process tool calls, tracking by ID and assigning synthetic indices.
+
+    Args:
+      tool_calls: Tool call deltas from chunk.
+    """
+    for tool_call_delta in tool_calls:
+      # New tool call detected by ID change (Ollama always provides non-null ID)
+      if tool_call_delta.id and tool_call_delta.id != self._current_id:
+        # Start new buffer with next synthetic index
+        if tool_call_delta.function and tool_call_delta.function.name:
+          new_buffer = _ToolCallBuffer(
+              id=tool_call_delta.id,
+              name=tool_call_delta.function.name,
+          )
+          # Add arguments if present (Ollama sends complete args in single chunk)
+          if tool_call_delta.function.arguments:
+            new_buffer.args_fragments.append(tool_call_delta.function.arguments)
+
+          self._tool_call_buffers_by_index[self._next_synthetic_index] = (
+              new_buffer
+          )
+          self._current_id = tool_call_delta.id
+          self._next_synthetic_index += 1
 
 
 class Ollama(OpenAICompatibleLlm):
@@ -32,9 +84,15 @@ class Ollama(OpenAICompatibleLlm):
     base_url: The base URL of the Ollama instance (default: "http://localhost:11434/v1").
   """
 
-  model: str = "qwen3-coder:30b"
-  base_url: str = "http://localhost:11434/v1"
+  model: str = Field(default="qwen3-coder:30b")
+  base_url: str = Field(default="http://localhost:11434/v1")
 
+  # Override accumulator class for Ollama-specific streaming behavior
+  accumulator_class: ClassVar[type[AssistantTurnAccumulator]] = (
+      OllamaAssistantTurnAccumulator
+  )
+
+  @override
   def _create_client(self) -> AsyncOpenAI:
     """Create AsyncOpenAI client configured for Ollama.
 

@@ -19,24 +19,26 @@ from __future__ import annotations
 import subprocess
 
 from openai import AsyncOpenAI
+from pydantic import Field
+from typing_extensions import override
 
-from ..openai_compatible import OpenAICompatibleLlm
+from .ollama import Ollama
 
 
-class OllamaCloudRun(OpenAICompatibleLlm):
+class OllamaCloudRun(Ollama):
   """Ollama provider for GCP Cloud Run with identity token authentication.
 
   Connects to Ollama instances running on Google Cloud Run using GCP
   identity tokens for authentication.
 
   Attributes:
-    model: The name of the Ollama model (e.g., "qwen3-coder:30b").
+    model: The name of the Ollama model (inherited from Ollama, default: "qwen3-coder:30b").
     base_url: The base URL of the Cloud Run Ollama instance (required).
   """
 
-  model: str = "qwen3-coder:30b"
-  base_url: str  # Required - no default for Cloud Run
+  base_url: str = Field(...)  # type: ignore[assignment]  # Required - no default for Cloud Run
 
+  @override
   def _create_client(self) -> AsyncOpenAI:
     """Create AsyncOpenAI client configured for Ollama on Cloud Run.
 
