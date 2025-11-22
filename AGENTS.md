@@ -48,6 +48,17 @@
 
 ### Testing
 
+#### Unit Testing Principles
+
+- **One Behavior Per Test:** Each test should focus on testing exactly one behavior of one public method. This makes tests easier to understand, debug, and maintain.
+- **Naming Convention:** Use `test_<method_name>_<behavior>` for test names. Example: `test_has_content_returns_false_when_empty()`, `test_process_chunk_yields_partial_for_text()`.
+- **Test Public APIs Only:** Don't test protected/private methods (prefixed with `_`). Test the observable behavior through public methods instead.
+- **Group Related Tests:** Organize tests by the method under test using nested classes or by placing related tests consecutively. Do not use decorative comment separators (e.g., `# ======...======`).
+- **Helper Methods:** Extract common setup logic into private helper methods (prefixed with `_`). Keep them focused and reusable.
+- **Avoid Redundant Assertions:** Don't test the same behavior multiple times across different test cases. Each behavior should be tested once in its dedicated test.
+
+#### Pytest Best Practices
+
 - **Assertions:** Use pytest's native `assert` statements with informative expressions. Pytest automatically provides detailed failure messages showing the values involved. Add custom messages with `assert condition, "helpful message"` when the expression alone isn't clear.
 - **Custom Assertions:** Write reusable helper functions (not methods) for repeated complex checks. Use `pytest.fail("message")` to explicitly fail a test with a custom message.
 - **Parameterized Tests:** Use `@pytest.mark.parametrize` to reduce duplication when running the same test logic with different inputs. This is more idiomatic than the `parameterized` library.
