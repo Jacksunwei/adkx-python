@@ -19,7 +19,7 @@ from __future__ import annotations
 from .agents import Agent
 from .agents import BaseAgent
 
-__version__ = "0.0.3"
+__version__ = "0.1.0"
 
 
 __all__ = [
