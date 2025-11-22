@@ -12,20 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Models module for adkx."""
+"""OpenAI-compatible provider implementations."""
 
-from .gemini import Gemini
-from .openai_compatible import OpenAICompatibleLlm
-from .openai_compatible_providers.groq import Groq
-from .openai_compatible_providers.ollama import Ollama
-from .openai_compatible_providers.ollama_cloud_run import OllamaCloudRun
-from .openai_compatible_providers.openai import OpenAI
+from .groq import Groq
+from .ollama import Ollama
+from .ollama_cloud_run import OllamaCloudRun
+from .openai import OpenAI
 
-__all__ = [
-    "Gemini",
-    "OpenAICompatibleLlm",
-    "Ollama",
-    "OpenAI",
-    "Groq",
-    "OllamaCloudRun",
-]
+__all__ = ["Ollama", "OpenAI", "Groq", "OllamaCloudRun"]

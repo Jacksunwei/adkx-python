@@ -12,16 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Ollama LLM implementation using OpenAI-compatible API."""
+"""Abstract base class for OpenAI-compatible LLM providers."""
 
 from __future__ import annotations
 
+from abc import abstractmethod
+from dataclasses import dataclass
+from dataclasses import field
 from functools import cached_property
 import json
 import logging
-import subprocess
 from typing import AsyncGenerator
 from typing import cast
+from typing import ClassVar
+from typing import Generator
 from typing import Optional
 
 from google.adk.models.base_llm import BaseLlm
@@ -34,6 +38,7 @@ from openai.types.chat import ChatCompletionChunk
 from openai.types.chat import ChatCompletionMessageParam
 from openai.types.chat.chat_completion_assistant_message_param import ChatCompletionAssistantMessageParam
 from openai.types.chat.chat_completion_chunk import ChoiceDelta
+from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
 from openai.types.chat.chat_completion_message import ChatCompletionMessage
 from openai.types.chat.chat_completion_message_function_tool_call_param import ChatCompletionMessageFunctionToolCallParam
 from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
@@ -56,11 +61,251 @@ _FINISH_REASON_MAP: dict[str, types.FinishReason] = {
 }
 
 
-class Ollama(BaseLlm):
-  """Ollama LLM implementation using OpenAI-compatible API.
+@dataclass
+class _ToolCallBuffer:
+  """Buffer for accumulating streaming tool call data.
 
-  Connects to Ollama instances (local or Cloud Run) using the OpenAI-compatible
-  endpoint at /v1/chat/completions.
+  OpenAI streams tool calls incrementally:
+  - First chunk: id + name + partial args
+  - Later chunks: more partial args (no id/name)
+
+  This buffer accumulates all chunks for a complete tool call.
+  Both id and name must be present in the first chunk.
+  """
+
+  id: str  # Required - present in first chunk
+  name: str  # Required - present in first chunk
+  args_fragments: list[str] = field(default_factory=list)
+
+
+class AssistantTurnAccumulator:
+  """Accumulates streaming chunks into a complete assistant turn.
+
+  Implements OpenAI's streaming specification: text/thought yield immediately
+  as partial responses, tool calls buffer silently until final response.
+
+  Tool call tracking (OpenAI spec):
+  - Index field (0, 1, 2...) uniquely identifies each tool call
+  - First chunk: id, name, type, empty/partial args
+  - Continuation chunks: same index, id=null, incremental args
+
+  Override _extract_thinking_text() for reasoning models (e.g., DeepSeek R1).
+  Override _process_tool_calls() for non-standard streaming patterns (e.g., Ollama).
+  """
+
+  def __init__(self):
+    """Initialize accumulator."""
+    # Partial responses (text/thought only)
+    self._partial_text_responses: list[LlmResponse] = []
+
+    # Tool call buffers keyed by index (OpenAI spec: index identifies tool call)
+    self._tool_call_buffers_by_index: dict[int, _ToolCallBuffer] = {}
+
+    # Turn metadata
+    self._finish_reason: types.FinishReason | None = None
+    self._model_version: str | None = None
+
+  # Public API
+
+  def process_chunk(
+      self,
+      chunk: ChatCompletionChunk,
+  ) -> Generator[LlmResponse, None, None]:
+    """Process streaming chunk, yielding partial responses for text/thought.
+
+    Args:
+      chunk: Streaming chunk from OpenAI-compatible API.
+
+    Yields:
+      Partial LlmResponse for text/thought content. Tool calls are buffered.
+    """
+    if not chunk.choices:
+      return
+
+    choice = chunk.choices[0]
+    delta = choice.delta
+
+    if self._model_version is None and chunk.model:
+      self._model_version = chunk.model
+
+    if choice.finish_reason:
+      self._finish_reason = _FINISH_REASON_MAP.get(
+          choice.finish_reason, types.FinishReason.OTHER
+      )
+
+    # 1. Process text/thought content - yield immediately for streaming UX
+    if parts := self._extract_parts_from_delta(delta):
+      partial_response = LlmResponse(
+          model_version=self._model_version,
+          content=types.ModelContent(parts=parts),
+          partial=True,
+          turn_complete=None,
+          finish_reason=None,
+          usage_metadata=None,
+      )
+      self._partial_text_responses.append(partial_response)
+      yield partial_response
+
+    # 2. Process tool calls - buffer silently (no yielding)
+    if delta.tool_calls:
+      self._process_tool_calls(delta.tool_calls)
+
+  def create_final_response(self) -> LlmResponse:
+    """Create final response merging all text/thought and tool calls.
+
+    Returns:
+      Complete LlmResponse with merged content.
+    """
+    # Merge text/thought parts from partial responses
+    text_parts: list[types.Part] = _streaming_utils.merge_response_parts(
+        self._partial_text_responses
+    )
+
+    # Convert tool call buffers to FunctionCall Parts
+    tool_call_parts: list[types.Part] = [
+        self._create_function_call_part(buffer)
+        for buffer in self._tool_call_buffers_by_index.values()
+    ]
+
+    # Combine all parts
+    all_parts = text_parts + tool_call_parts
+
+    # TODO: Extract usage metadata from streaming chunks once stream_options
+    # is supported. Currently always None in streaming mode.
+    usage_metadata = None
+
+    return LlmResponse(
+        model_version=self._model_version,
+        content=types.ModelContent(parts=all_parts) if all_parts else None,
+        partial=False,
+        turn_complete=True,
+        finish_reason=self._finish_reason,
+        usage_metadata=usage_metadata,
+    )
+
+  def has_content(self) -> bool:
+    """Check if accumulator has content to yield.
+
+    Returns:
+      True if any text/thought or tool calls accumulated.
+    """
+    return bool(
+        self._partial_text_responses or self._tool_call_buffers_by_index
+    )
+
+  # Protected override points - customize for provider-specific behavior
+
+  def _extract_thinking_text(self, delta: ChoiceDelta) -> str | None:
+    """Extract thinking/reasoning text for models that support it.
+
+    Override for providers with reasoning output (e.g., DeepSeek R1).
+    Base implementation returns None (OpenAI doesn't support reasoning).
+
+    Args:
+      delta: Streaming delta from chunk.
+
+    Returns:
+      Thinking text if present, None otherwise.
+    """
+    return None
+
+  def _process_tool_calls(self, tool_calls: list[ChoiceDeltaToolCall]) -> None:
+    """Process tool call deltas following OpenAI spec (index-based tracking).
+
+    Override for providers with non-standard streaming (e.g., Ollama uses ID-based).
+
+    Args:
+      tool_calls: Tool call deltas from chunk.
+    """
+    for tool_call_delta in tool_calls:
+      index = tool_call_delta.index
+
+      # New tool call at this index
+      if index not in self._tool_call_buffers_by_index:
+        if (
+            tool_call_delta.id
+            and tool_call_delta.function
+            and tool_call_delta.function.name
+        ):
+          self._tool_call_buffers_by_index[index] = _ToolCallBuffer(
+              id=tool_call_delta.id,
+              name=tool_call_delta.function.name,
+          )
+        else:
+          logger.warning("Tool call missing id/name at index=%s", index)
+          continue
+
+      # Accumulate arguments
+      if (
+          index in self._tool_call_buffers_by_index
+          and tool_call_delta.function
+          and tool_call_delta.function.arguments
+      ):
+        self._tool_call_buffers_by_index[index].args_fragments.append(
+            tool_call_delta.function.arguments
+        )
+
+  # Protected helpers - internal implementation
+
+  def _extract_parts_from_delta(self, delta: ChoiceDelta) -> list[types.Part]:
+    """Extract text and thought parts from delta.
+
+    Args:
+      delta: Streaming delta from chunk.
+
+    Returns:
+      List of Part objects (text/thought only, no tool calls).
+    """
+    parts: list[types.Part] = []
+
+    # Handle provider-specific thinking/reasoning (overridable)
+    if thinking_text := self._extract_thinking_text(delta):
+      parts.append(types.Part(thought=True, text=thinking_text))
+
+    # Handle text content
+    if delta.content:
+      parts.append(types.Part(text=delta.content))
+
+    return parts
+
+  def _create_function_call_part(
+      self, tool_call_buffer: _ToolCallBuffer
+  ) -> types.Part:
+    """Convert tool call buffer to FunctionCall Part.
+
+    Args:
+      tool_call_buffer: Accumulated tool call data.
+
+    Returns:
+      Part with FunctionCall.
+    """
+    # Reconstruct complete arguments JSON
+    args_str = "".join(tool_call_buffer.args_fragments)
+
+    # Parse arguments
+    try:
+      args_dict = json.loads(args_str) if args_str else {}
+    except json.JSONDecodeError:
+      logger.warning(
+          "Failed to parse tool call arguments: %s", args_str, exc_info=True
+      )
+      args_dict = {}
+
+    # Create FunctionCall part
+    function_call = types.FunctionCall(
+        id=tool_call_buffer.id,
+        name=tool_call_buffer.name,
+        args=args_dict,
+    )
+
+    return types.Part(function_call=function_call)
+
+
+class OpenAICompatibleLlm(BaseLlm):
+  """Abstract base class for OpenAI-compatible LLM providers.
+
+  Implements the OpenAI Chat Completions API protocol. Subclasses must implement
+  _create_client() to provide provider-specific configuration.
 
   Note on thought/reasoning content:
     - When receiving responses: thought text (from reasoning field) is captured as
@@ -69,22 +314,21 @@ class Ollama(BaseLlm):
       as the OpenAI Chat Completions API does not have a standard field for
       reasoning content in request messages
 
-  Attributes:
-    model: The name of the Ollama model (e.g., "deepseek-r1:8b").
-    base_url: The base URL of the Ollama instance (e.g., "http://localhost:11434/v1").
-    api_key: API key (not used by Ollama, defaults to "unused").
+  Class Attributes:
+    accumulator_class: The accumulator class to use for streaming responses.
+      Subclasses can override this to customize streaming behavior.
   """
 
-  model: str = "qwen3-coder:30b"
-  base_url: str = "http://localhost:11434/v1"
-  api_key: str = "unused"
-  use_gcp_auth: bool = False
+  # Class attribute - shared by instances, overridable in subclasses
+  accumulator_class: ClassVar[type[AssistantTurnAccumulator]] = (
+      AssistantTurnAccumulator
+  )
 
   @override
   async def generate_content_async(
       self, llm_request: LlmRequest, stream: bool = False
   ) -> AsyncGenerator[LlmResponse, None]:
-    """Generates content from the Ollama model.
+    """Generates content from the OpenAI-compatible model.
 
     This method strictly follows the BaseLlm contract:
     - For non-streaming: yields exactly one LlmResponse
@@ -101,7 +345,7 @@ class Ollama(BaseLlm):
     self._maybe_append_user_content(llm_request)
 
     logger.info(
-        "Sending request to Ollama model: %s, stream: %s",
+        "Sending request to model: %s, stream: %s",
         llm_request.model or self.model,
         stream,
     )
@@ -128,7 +372,7 @@ class Ollama(BaseLlm):
           max_tokens=max_tokens,
           stream=False,
       )
-      logger.info("Response received from Ollama model")
+      logger.info("Response received from model")
       yield self._convert_completion(response)
 
   async def _generate_content_streaming(
@@ -142,8 +386,8 @@ class Ollama(BaseLlm):
     """Generate content in streaming mode.
 
     Per BaseLlm contract: all streaming responses are treated as one turn.
-    Yields each chunk as a partial response, then yields a final complete
-    response with all accumulated content.
+    Yields text/thought as partial responses for real-time UX, buffers tool calls
+    silently, then yields a final complete response with all content merged.
 
     Args:
       llm_request: The request to send to the LLM.
@@ -153,9 +397,10 @@ class Ollama(BaseLlm):
       max_tokens: Maximum output tokens.
 
     Yields:
-      LlmResponse: Partial responses for each chunk, then final complete response.
+      LlmResponse: Partial responses for text/thought, then final complete response.
     """
-    accumulated_responses: list[LlmResponse] = []
+    # Create accumulator instance using class attribute
+    accumulator = self.accumulator_class()
 
     # TODO: Add support for stream_options={"include_usage": True} to get usage
     # metadata in streaming mode. This requires handling the final chunk which has
@@ -170,13 +415,13 @@ class Ollama(BaseLlm):
     )
 
     async for chunk in stream:
-      partial_response = self._convert_streaming_chunk(chunk)
-      accumulated_responses.append(partial_response)
-      yield partial_response
+      # Process chunk through accumulator - yields partial responses for text/thought
+      for partial_response in accumulator.process_chunk(chunk):
+        yield partial_response
 
-    if accumulated_responses:
-      final_response = self._create_complete_response(accumulated_responses)
-      yield final_response
+    # Yield final merged response if any content was accumulated
+    if accumulator.has_content():
+      yield accumulator.create_final_response()
 
   # Request conversion methods (ADK -> OpenAI format)
 
@@ -359,84 +604,6 @@ class Ollama(BaseLlm):
 
   # Response conversion methods (OpenAI -> ADK format)
 
-  def _extract_parts_from_delta(self, delta: ChoiceDelta) -> list[types.Part]:
-    """Extract ADK Parts from OpenAI streaming delta.
-
-    Handles reasoning (thought), text content, and tool calls.
-
-    Args:
-      delta: OpenAI ChoiceDelta from streaming chunk.
-
-    Returns:
-      List of ADK Part objects.
-    """
-    parts: list[types.Part] = []
-
-    # Handle DeepSeek R1 reasoning (non-standard field)
-    reasoning = getattr(delta, "reasoning", None)
-    if reasoning:
-      parts.append(types.Part(thought=True, text=reasoning))
-
-    # Handle text content
-    if delta.content:
-      parts.append(types.Part(text=delta.content))
-
-    # Handle tool calls
-    for tool_call in delta.tool_calls or []:
-      if tool_call.function:
-        args_str = tool_call.function.arguments or "{}"
-        try:
-          args_dict = json.loads(args_str)
-        except json.JSONDecodeError:
-          args_dict = {}
-
-        parts.append(
-            types.Part(
-                function_call=types.FunctionCall(
-                    id=tool_call.id,
-                    name=tool_call.function.name,
-                    args=args_dict,
-                )
-            )
-        )
-
-    return parts
-
-  def _convert_streaming_chunk(self, chunk: ChatCompletionChunk) -> LlmResponse:
-    """Convert streaming chunk to LlmResponse.
-
-    Args:
-      chunk: OpenAI ChatCompletionChunk.
-
-    Returns:
-      Partial LlmResponse object.
-    """
-
-    if not chunk.choices:
-      return LlmResponse(
-          error_code="NO_CHOICES",
-          error_message="No choices returned from model",
-      )
-
-    choice = chunk.choices[0]
-    parts = self._extract_parts_from_delta(choice.delta)
-    content = types.ModelContent(parts=parts) if parts else None
-
-    finish_reason = None
-    if choice.finish_reason:
-      finish_reason = _FINISH_REASON_MAP.get(
-          choice.finish_reason, types.FinishReason.OTHER
-      )
-
-    return LlmResponse(
-        model_version=chunk.model,
-        content=content,
-        partial=True,
-        turn_complete=None,
-        finish_reason=finish_reason,
-        usage_metadata=None,
-    )
-
   def _extract_parts_from_message(
       self, message: ChatCompletionMessage
   ) -> list[types.Part]:
@@ -462,7 +629,10 @@ class Ollama(BaseLlm):
 
     # Handle tool calls
     for tool_call in message.tool_calls or []:
-      if isinstance(tool_call, ChatCompletionMessageToolCall):
+      if (
+          isinstance(tool_call, ChatCompletionMessageToolCall)
+          and tool_call.function.name
+      ):
         args_str = tool_call.function.arguments
         try:
           args_dict = json.loads(args_str)
@@ -538,18 +708,23 @@ class Ollama(BaseLlm):
     )
 
   def _create_complete_response(
-      self, accumulated_responses: list[LlmResponse]
+      self,
+      accumulated_responses: list[LlmResponse],
+      finish_reason: types.FinishReason | None = None,
+      model_version: str | None = None,
   ) -> LlmResponse:
     """Create the final complete response from all streaming chunks.
 
     Merging strategy:
     - content: Merge all parts from all chunks
-    - finish_reason: Use last (only final chunk has this)
+    - finish_reason: Use provided value (from last chunk with finish_reason)
     - usage_metadata: Use last (cumulative usage)
-    - Other fields: Use last chunk's values
+    - model_version: Use provided value (from chunks)
 
     Args:
       accumulated_responses: All partial responses from streaming.
+      finish_reason: Finish reason from streaming (if any).
+      model_version: Model version from streaming chunks.
 
     Returns:
       LlmResponse: Complete response with all accumulated content.
@@ -559,50 +734,18 @@ class Ollama(BaseLlm):
     )
     last_response: LlmResponse = accumulated_responses[-1]
 
+    # Prefer explicit parameters, fall back to last response values
+    final_model_version = model_version or last_response.model_version
+    final_finish_reason = finish_reason or last_response.finish_reason
+
     return LlmResponse(
-        model_version=last_response.model_version,
+        model_version=final_model_version,
         content=types.ModelContent(parts=all_parts) if all_parts else None,
         partial=False,
         turn_complete=True,
-        finish_reason=last_response.finish_reason,
+        finish_reason=final_finish_reason,
         usage_metadata=last_response.usage_metadata,
     )
-
-  # Utility methods
-
-  def _get_gcp_auth_token(self) -> str:
-    """Get GCP authentication token for Cloud Run.
-
-    Returns:
-      str: The authentication token.
-
-    Raises:
-      RuntimeError: If unable to fetch authentication token.
-    """
-    # TODO: This method is for local development with user credentials (gcloud auth login).
-    # For production deployments, use service account keys or GCP metadata server instead.
-    # Note: Cannot use google-auth library to generate ID tokens with user credentials.
-    # For Cloud Run, we need an ID token not an access token
-    # Use gcloud to get the ID token (works with user credentials)
-    try:
-      result = subprocess.run(
-          ["gcloud", "auth", "print-identity-token"],
-          capture_output=True,
-          text=True,
-          check=True,
-      )
-      token = result.stdout.strip()
-      if not token:
-        raise RuntimeError("Empty token returned from gcloud")
-      return token
-    except subprocess.CalledProcessError as e:
-      raise RuntimeError(
-          f"Failed to fetch GCP authentication token: {e.stderr}"
-      ) from e
-    except FileNotFoundError as e:
-      raise RuntimeError(
-          "gcloud command not found. Please install Google Cloud SDK."
-      ) from e
 
   # Properties
 
@@ -611,18 +754,17 @@ class Ollama(BaseLlm):
     """Creates and returns the AsyncOpenAI client.
 
     Returns:
-      AsyncOpenAI: The configured OpenAI client pointing to Ollama.
+      AsyncOpenAI: The configured OpenAI client.
     """
-    api_key = self.api_key
-    default_headers = None
+    return self._create_client()
 
-    if self.use_gcp_auth:
-      api_key = self._get_gcp_auth_token()
-      # For Cloud Run, we need to explicitly set the Authorization header
-      default_headers = {"Authorization": f"Bearer {api_key}"}
+  @abstractmethod
+  def _create_client(self) -> AsyncOpenAI:
+    """Create and configure the AsyncOpenAI client.
 
-    return AsyncOpenAI(
-        base_url=self.base_url,
-        api_key=api_key,
-        default_headers=default_headers,
-    )
+    Subclasses must implement this to provide provider-specific configuration
+    such as base_url, api_key, headers, etc.
+
+    Returns:
+      AsyncOpenAI: The configured client instance.
+    """
