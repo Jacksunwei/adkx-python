@@ -22,6 +22,7 @@ repos:
     rev: 0.7.21
     hooks:
       - id: mdformat
+        exclude: '^CHANGELOG\.md$'
         additional_dependencies:
           - mdformat-gfm # GitHub Flavored Markdown
           - mdformat-tables # Table support
