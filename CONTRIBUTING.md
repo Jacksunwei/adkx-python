@@ -77,6 +77,16 @@ pyink src/ tests/ samples/
 - Imports: sorted with isort (Google profile)
 - Type hints: use `from __future__ import annotations`
 
+### AI-Assisted Development
+
+[AGENTS.md](AGENTS.md) contains comprehensive Python best practices and coding patterns that can be used to bootstrap AI-assisted coding (e.g., with Claude Code, Gemini CLI, GitHub Copilot, or Cursor). This file serves as:
+
+- **Context for AI assistants** - Coding standards, patterns, and anti-patterns
+- **Reference guide** - Python best practices, testing strategies, and debugging tips
+- **Project conventions** - Naming, structure, and design decisions specific to adkx
+
+When working with AI coding assistants, reference AGENTS.md to ensure generated code follows project conventions.
+
 ## Testing
 
 ```bash
