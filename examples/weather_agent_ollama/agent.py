@@ -22,6 +22,12 @@ This example demonstrates:
 The agent uses the same get_weather tool as the base weather_agent example,
 showing how easy it is to switch between Gemini and Ollama.
 
+Tested models:
+- qwen3:8b (recommended)
+- gpt-oss:20b
+- mistral-small:24b
+- qwen3-coder:30b
+
 For running agents, see the ADK documentation on sessions and
 invocation contexts.
 """
@@ -75,14 +81,7 @@ async def get_weather(location: str, *, tool_context) -> WeatherData:
 
 # 3. Create the Ollama LLM instance
 ollama_llm = Ollama(
-    model="qwen3-coder:30b",  # Change this to your preferred model
-    base_url="http://localhost:11434/v1",  # Local Ollama instance
-    # For remote Cloud Run instances with GCP auth, use OllamaCloudRun instead:
-    # from adkx.models import OllamaCloudRun
-    # ollama_llm = OllamaCloudRun(
-    #     model="qwen3-coder:30b",
-    #     base_url="https://your-service.run.app/v1",
-    # )
+    model="qwen3:8b",  # You could try other models as listed above.
 )
 
 # 4. Create an agent with the Ollama LLM and tool

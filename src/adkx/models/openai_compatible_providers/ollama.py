@@ -84,7 +84,7 @@ class Ollama(OpenAICompatibleLlm):
     base_url: The base URL of the Ollama instance (default: "http://localhost:11434/v1").
   """
 
-  model: str = Field(default="qwen3-coder:30b")
+  model: str = Field(default="qwen3:8b")
   base_url: str = Field(default="http://localhost:11434/v1")
 
   # Override accumulator class for Ollama-specific streaming behavior
