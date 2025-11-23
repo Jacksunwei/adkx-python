@@ -33,7 +33,7 @@ class TestOllamaCloudRun:
   def test_default_model(self):
     """Test OllamaCloudRun default model."""
     cloud_run = OllamaCloudRun(base_url="https://ollama.run.app/v1")
-    assert cloud_run.model == "qwen3-coder:30b"
+    assert cloud_run.model == "qwen3:8b"
 
   def test_custom_model(self):
     """Test OllamaCloudRun with custom model."""

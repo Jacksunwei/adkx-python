@@ -34,9 +34,9 @@ def ollama() -> Ollama:
 class TestOllamaInitialization:
   """Tests for Ollama initialization."""
 
-  def test_model_defaults_to_qwen3_coder_30b(self, ollama):
-    """Test that model defaults to qwen3-coder:30b."""
-    assert ollama.model == "qwen3-coder:30b"
+  def test_model_defaults_to_qwen3_8b(self, ollama):
+    """Test that model defaults to qwen3:8b."""
+    assert ollama.model == "qwen3:8b"
 
   def test_base_url_defaults_to_localhost_11434(self, ollama):
     """Test that base_url defaults to http://localhost:11434/v1."""
