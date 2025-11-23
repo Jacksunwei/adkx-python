@@ -12,11 +12,12 @@ See [TEMPLATE.md](TEMPLATE.md) for format.
 
 ### Proposed
 
-*(None - first will be ADR-0001)*
+*(None)*
 
 ### Accepted
 
-*(None)*
+- [ADR-0001: Tool Call Streaming Incompatibility Across OpenAI-Compatible Providers](0001-streaming-tool-call-accumulator.md) - 2025-01-21
+- [ADR-0002: Multi-Modal Function Responses with Standalone Parts](0002-multi-modal-function-response.md) - 2025-11-16
 
 ### Deprecated
 
