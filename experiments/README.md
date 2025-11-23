@@ -16,7 +16,7 @@ Safe to delete at any time. No code review required.
 
 | Type              | Destination      |
 | ----------------- | ---------------- |
-| Runnable examples | `examples/`      |
+| Runnable samples  | `samples/`       |
 | Research/analysis | `docs/research/` |
 | Design proposals  | `docs/design/`   |
 | Tests             | `tests/`         |
