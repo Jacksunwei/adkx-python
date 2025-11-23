@@ -34,4 +34,4 @@ Create an image of a husky playing in the sand, with a happy face and flying ear
 
 ## Viewing Generated Images
 
-Generated images are automatically saved to `image.png` in the `examples/image_agent/` folder. The ADK web UI cannot display images yet, but you can open the saved file directly.
+Generated images are automatically saved to `image.png` in the `samples/image_agent/` folder. The ADK web UI cannot display images yet, but you can open the saved file directly.

@@ -80,7 +80,7 @@ def to_parts(self, *, name: str, id: str) -> list[Part]:
 
 **Usage for tool authors**:
 
-See [examples/image_agent](../../examples/image_agent/) for a complete working example.
+See [samples/image_agent](../../samples/image_agent/) for a complete working example.
 
 ```python
 async def create_image(prompt: str) -> ToolResult:

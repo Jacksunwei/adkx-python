@@ -120,7 +120,7 @@ docs/decisions/NNNN-decision-name.md
 
 ## Related Directories
 
-- **[examples/](../examples/)** - Runnable code examples (committed)
+- **[samples/](../samples/)** - Runnable code samples (committed)
 - **[experiments/](../experiments/)** - Local-only scratch work (gitignored)
 - **[tests/](../tests/)** - Test suite
 

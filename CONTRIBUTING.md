@@ -57,17 +57,17 @@ pre-commit run --all-files
 Use the autoformat script to format code:
 
 ```bash
-# Format all default directories (src/, tests/, examples/)
+# Format all default directories (src/, tests/, samples/)
 ./autoformat.sh
 
 # Format specific paths
 ./autoformat.sh src/
-./autoformat.sh examples/weather_agent.py
+./autoformat.sh samples/weather_agent.py
 ./autoformat.sh src/ tests/
 
 # Or run formatters manually
-isort src/ tests/ examples/
-pyink src/ tests/ examples/
+isort src/ tests/ samples/
+pyink src/ tests/ samples/
 ```
 
 ### Style Requirements
