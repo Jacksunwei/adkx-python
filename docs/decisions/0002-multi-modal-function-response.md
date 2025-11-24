@@ -143,6 +143,6 @@ async def create_image(prompt: str) -> ToolResult:
 
 ## References
 
-- **Design Analysis**: [Multi-modal Function Response Test Results](../design/multi-modal-function-response.md)
+- **Design Analysis**: [Multi-modal Function Response Test Results](../design/multi-modal-function-response-2025-11.md)
 - **Implementation**: [ToolResult.to_parts()](../../src/adkx/tools/base_tool.py#L116-L201)
 - **Test Image**: Border Collie JPEG (500x342, ~57KB) - correctly identified by both backends
