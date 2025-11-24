@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/Jacksunwei/adkx-python/compare/adkx-v0.1.0...adkx-v0.2.0) (2025-11-24)
+
+
+### Features
+
+* Add image generation agent example ([#23](https://github.com/Jacksunwei/adkx-python/issues/23)) ([f86ea65](https://github.com/Jacksunwei/adkx-python/commit/f86ea65b15351efeb76b08cd5e7c27ef2a7c2937))
+
+
+### Documentation
+
+* Add ADR-0002 for multi-modal function responses ([#24](https://github.com/Jacksunwei/adkx-python/issues/24)) ([79d833a](https://github.com/Jacksunwei/adkx-python/commit/79d833af3a88f4731382cb3f86e83ff9177c30bf))
+* Add team-agent pattern design proposal ([#27](https://github.com/Jacksunwei/adkx-python/issues/27)) ([b2e9d57](https://github.com/Jacksunwei/adkx-python/commit/b2e9d577ef7e8f96dd5b7e3bb2f483607f217078))
+* Document tested Ollama models and update defaults ([3c84b0f](https://github.com/Jacksunwei/adkx-python/commit/3c84b0f63aa5ab9321086251312f493a7dca0e55))
+* Improve README and CONTRIBUTING with comprehensive content ([#26](https://github.com/Jacksunwei/adkx-python/issues/26)) ([a26e1f6](https://github.com/Jacksunwei/adkx-python/commit/a26e1f6191e85be27925290f502d34c95f5f4740))
+* Reorganize README badges for clarity ([a731084](https://github.com/Jacksunwei/adkx-python/commit/a731084c632e7ee70798c525f34e1212ee6d8910))
+
+
+### Chores
+
+* Exclude CHANGELOG.md from mdformat ([cb05347](https://github.com/Jacksunwei/adkx-python/commit/cb053474392c5392cdda7541d60519f1d2eb4dc9))
+
 ## [0.1.0](https://github.com/Jacksunwei/adkx-python/compare/adkx-v0.0.3...adkx-v0.1.0) (2025-11-22)
 
 
