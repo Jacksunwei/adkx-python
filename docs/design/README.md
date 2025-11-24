@@ -6,7 +6,8 @@ Formal proposals for significant features or architectural changes.
 
 ### Active
 
-- **[Multi-Modal Function Response](multi-modal-function-response.md)** - Design for returning images from function calls
+- **[Multi-Modal Function Response](multi-modal-function-response-2025-11.md)** - Design for returning images from function calls
+- **[Team Agent Pattern](team-agent-2025-11.md)** - Multi-agent coordination with lead and expert agents
 
 ### Implemented
 
